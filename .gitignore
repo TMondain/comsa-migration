@@ -1,3 +1,6 @@
+data/*
+scripts/geolocator_processing_routes/*
+
 # History files
 .Rhistory
 .Rapp.history
