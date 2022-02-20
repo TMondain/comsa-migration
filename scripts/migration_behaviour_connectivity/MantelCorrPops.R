@@ -14,7 +14,7 @@ library("readr")
 source("scripts/custom_functions.R")
 
 # load migration summary
-gm <- read_csv("data/raw_positions/GLS_mig_R.csv")
+gm <- read_csv("data/movement_data/GLS_mig_R.csv")
 head(gm)
 
 # label the individual populations from Scotland (not used in paper)
@@ -70,7 +70,7 @@ gm_MigCon_sen <- subset(gm2, loc2 == "Senegal") %>%
 mc <- rbind(gm_MigCon,gm_MigCon_sen)
 mc
 
-write.csv(mc, file = "Outputs/Migratory_mixing_pops.csv")
+write.csv(mc, file = "outputs/Migratory_mixing_pops.csv")
 
 
 ### mantel correlation test

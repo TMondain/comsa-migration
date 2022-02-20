@@ -1,5 +1,6 @@
 data/*
 scripts/geolocator_processing_routes/*
+outputs/*
 
 # History files
 .Rhistory

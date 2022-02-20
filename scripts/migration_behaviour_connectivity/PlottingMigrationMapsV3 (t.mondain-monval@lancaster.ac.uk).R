@@ -7,21 +7,21 @@ library(raster)
 library(lubridate)
 library(adehabitatHR)
 
-setwd("C:/Users/tmond/OneDrive - Lancaster University/PhD Work/Analyses/GLS analyses/MigrationBehaviour")
-setwd("C:/Users/mondainm/OneDrive - Lancaster University/PhD Work/Analyses/GLS analyses/MigrationBehaviour")
 
 #####################################################
 #####          PLOTTING MIGRATION MAPS          #####
 #####################################################
 
 # load world map
-world.shp <- readOGR("C:/Users/tmond/OneDrive - Lancaster University/PhD Work/Fieldwork Data/Geolocator data/worldmap.geojson", verbose = F)
-world.shp <- readOGR("C:/Users/mondainm/OneDrive - Lancaster University/PhD Work/Fieldwork Data/Geolocator data/worldmap.geojson", verbose = F)
+world.shp <- readOGR("data/worldmap.geojson", verbose = F)
+
+# crop to palearctic
 pal.shp <- world.shp %>% crop(., extent(-80, 155, -40, 90)) %>% fortify
 
 
-mg <- read_csv("C:/Users/tmond/OneDrive - Lancaster University/PhD Work/Analyses/GLS analyses/GLS_Summary_Movements_Stopovers/GLS_mig_R.csv")
-mg <- read_csv("C:/Users/mondainm/OneDrive - Lancaster University/PhD Work/Analyses/GLS analyses/GLS_Summary_Movements_Stopovers/GLS_mig_R.csv")
+## load migration summary
+mg <- read_csv("data/movement_data/GLS_mig_R.csv")
+head(mg)
 
 # tidy dates
 g <- mg %>% mutate(brd_dep = ymd_hms(brd_dep),
@@ -37,36 +37,28 @@ g <- mg %>% mutate(brd_dep = ymd_hms(brd_dep),
                    brd_arr_jd = yday(brd_arr),
                    brd_arr_yr = year(brd_arr))
 
-# Migration schedule
-ms <- read_csv("C:/Users/tmond/OneDrive - Lancaster University/PhD Work/Analyses/GLS analyses/Raw_Tracks_Mig_Schedules/All_Combined/Schedule_AllIndivs_MeanWint.csv")
-ms <- read_csv("C:/Users/mondainm/OneDrive - Lancaster University/PhD Work/Analyses/GLS analyses/Raw_Tracks_Mig_Schedules/All_Combined/Schedule_AllIndivs_MeanWint.csv")
+
+## load Migration schedule
+ms <- read_csv("data/movement_data/Schedule_AllIndivs_MeanWint.csv")
+head(ms)
 
 # set senegal winter site
 ms$mig[ms$loc == "Senegal" & ms$lat < 25] <- "Winter"
 
-ms[ms$indiv=="CA",]
-
+# make sure spring/autumn labels are consistent
 ms <- ms %>% mutate(mig = ifelse(mig == "Autumn", "autumn", 
                                  ifelse(mig == "Spring", "spring", 
                                         ifelse(mig == "Winter", "winter", mig))))
 
-# positions of all individuals
-mp <- read_csv("C:/Users/tmond/OneDrive - Lancaster University/PhD Work/Analyses/GLS analyses/Raw_Tracks_Mig_Schedules/All_Combined/Positions_AllIndivs.csv")
-mp <- read_csv("C:/Users/mondainm/OneDrive - Lancaster University/PhD Work/Analyses/GLS analyses/Raw_Tracks_Mig_Schedules/All_Combined/Positions_AllIndivs.csv")
+## load positions of all individuals
+mp <- read_csv("data/movement_data/Positions_AllIndivs.csv")
+head(mp)
 
+# autumn/spring consistency and remove missing points
 mp <- mp %>% mutate(mig = gsub("Autumn", replacement = "autumn", x = mig),
                     mig = gsub("Spring", replacement = "spring", x = mig)) %>% 
-  na.omit #%>% 
-# subset((jd <250 | jd > 280) & (jd < 65 | jd > 95)) %>% 
-# group_by(indiv) %>% mutate(lat = smooth(lat, twiceit = T),
-#                            lon = smooth(lon, twiceit = T))
+  na.omit 
 
-
-min(g$win_dep_jd, na.rm = T)
-max(g$brd_arr_jd, na.rm = T)
-
-min(g$brd_dep_jd)
-max(g$win_arr_jd, na.rm = T)
 
 
 mp_t <- mp %>% filter((jd > 165 & jd < 240) | (jd > 75 & jd < 145))

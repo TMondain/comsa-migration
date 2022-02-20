@@ -23,3 +23,12 @@ mantelCorP <- function(lon1, lat1, lon2, lat2){
 
 # Center (without scaling)
 center <- function(x){scale(x, scale = F, center = T)}
+
+# moving average function
+ma <- function(arr, n=15){
+  res = arr
+  for(i in n:length(arr)){
+    res[i] = mean(arr[(i-n+1):i])
+  }
+  res
+}
