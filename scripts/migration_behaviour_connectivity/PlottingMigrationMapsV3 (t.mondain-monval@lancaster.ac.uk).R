@@ -7,6 +7,8 @@ library(raster)
 library(lubridate)
 library(adehabitatHR)
 
+source('scripts/custom_functions.R')
+
 
 #####################################################
 #####          PLOTTING MIGRATION MAPS          #####
@@ -50,6 +52,7 @@ ms <- ms %>% mutate(mig = ifelse(mig == "Autumn", "autumn",
                                  ifelse(mig == "Spring", "spring", 
                                         ifelse(mig == "Winter", "winter", mig))))
 
+
 ## load positions of all individuals
 mp <- read_csv("data/movement_data/Positions_AllIndivs.csv")
 head(mp)
@@ -61,123 +64,17 @@ mp <- mp %>% mutate(mig = gsub("Autumn", replacement = "autumn", x = mig),
 
 
 
-mp_t <- mp %>% filter((jd > 165 & jd < 240) | (jd > 75 & jd < 145))
+#####################################################
+#####          KERNEL DENSITY ANALYSES          #####
+#####################################################
 
-ma <- function(arr, n=15){
-  res = arr
-  for(i in n:length(arr)){
-    res[i] = mean(arr[(i-n+1):i])
-  }
-  res
-}
-
-
-
-mp_t <- subset(mp_t, lat > 5) %>% group_by(indiv) %>% mutate(lat = ma((lat), n = 4),
-                                                             lon = ma((lon), n = 4))
-mp_t$lat[mp_t$loc == "Sedbergh" & mp_t$lat > 52] <- 54.4
-mp_t$lon[mp_t$loc == "Sedbergh" & mp_t$lat > 52] <- -2.55
-mp_t$lat[mp_t$loc == "Scotland" & mp_t$lat > 57] <- 58
-mp_t$lon[mp_t$loc == "Scotland" & mp_t$lat > 57] <- -4
-
-
-
-mp_t$lat[mp_t$loc == "Scotland" & mp_t$lat > 20 & mp_t$lon < -15] <- NA
-
-ms$lat[ms$indiv == "KT" & ms$lat > 58.6] <- NA
-
-head(g)
-
-ggplot(data = mp_t, aes(x = lon, y = lat, group = indiv, colour = loc)) + geom_path(alpha = 0.1, size = 1.5) +
-  geom_polygon(data = pal.shp, aes(x = long, y = lat, group = group),
-               fill = NA, colour = "black", size = 0.1) +
-  coord_map("mercator", xlim = c(-30, 30), ylim = c(0, 72)) +
-  geom_point(data = subset(ms, mig == "spring"),
-             aes(x = lon, y = lat, fill = loc, size = stopover, pch = loc), alpha = 0.5) +
-  geom_point(data = subset(ms, mig == "autumn"),
-             aes(x = lon, y = lat, fill = loc, size = stopover, pch = loc), alpha = 0.5) +
-  geom_point(data = g, aes(x = win_lon, y = win_lat, fill = loc), pch = 23, size = 4) +
-  geom_point(data = g, aes(x = brd_lon, y = brd_lat, fill = loc, pch = loc), size = 4) +
-  facet_wrap(~mig) +
-  theme_bw()
-
-library(gganimate)
-library(plotly)
-
-eg_pl <- ggplot()  +
-  geom_polygon(data = pal.shp, aes(x = long, y = lat, group = group),
-               fill = NA, colour = "black", size = 0.3) +
-  coord_map("mercator", xlim = c(-30, 5), ylim = c(0, 60)) + 
-  geom_path(data = subset(mp_t, indiv == 'CA')[-c(1:35,160:166),], aes(x = lon, y = lat, group = mig, colour = mig), 
-            alpha = 0.8, size = 1, lineend = 'round')+
-  theme_bw() +
-  theme(legend.position = 'none') +
-  xlab("") + ylab("") +
-  transition_reveal(jd)
-
-
-# animate(eg_pl, height = 800, width =400)
-# anim_save("Outputs/CAmigration.gif")
-
-# ggsave(eg_pl, file = "Outputs/CAmigration.jpeg", device = 'jpeg',
-#        dpi = 300, height = 5, width = 3)
-
-
-ggplot(data = mp_t, aes(x = lon, y = lat, group = indiv, colour = loc)) + geom_path(alpha = 0.1, size = 1.5) +
-  geom_polygon(data = pal.shp, aes(x = long, y = lat, group = group),
-               fill = NA, colour = "black", size = 0.1) +
-  coord_map("mercator", xlim = c(-30, 30), ylim = c(0, 72)) +
-  geom_point(data = subset(ms, mig == "spring"),
-             aes(x = lon, y = lat, fill = loc, size = stopover, pch = "Stopovers"), alpha = 0.5) +
-  geom_point(data = subset(ms, mig == "autumn"),
-             aes(x = lon, y = lat, fill = loc, size = stopover, pch = "Stopovers"), alpha = 0.5) +
-  geom_point(data = g, aes(x = win_lon, y = win_lat, fill = loc, pch = "Wintering"), size = 4) +
-  geom_point(data = g, aes(x = brd_lon, y = brd_lat, fill = loc, pch = "Breeding"), size = 4) +
-  facet_wrap(~mig) +
-  theme_bw()
-
-
-# mp_t$lat[mp_t$lat < 15] <- NA
-
-ggplot() + geom_path(data = subset(mp_t, lat>15), aes(x = lon, y = lat, group = indiv, colour = loc), alpha = 0.7, size = 0.2) + 
-  geom_polygon(data = pal.shp, aes(x = long, y = lat, group = group),
-               fill = NA, colour = "black", size = 0.1) +
-  coord_map("mercator", xlim = c(-30, 30), ylim = c(0, 72)) +
-  geom_point(data = subset(ms, mig == "spring"), 
-             aes(x = lon, y = lat, fill = loc, size = stopover)) +
-  geom_point(data = subset(ms, mig == "autumn"), 
-             aes(x = lon, y = lat, fill = loc, size = stopover)) +
-  geom_density_2d(data = subset(mp_t, lat < 35), aes(x = lon, y = lat),
-                  bins = 4, binwidth = 10000, colour = "red", size = 1, n = 500, h = 20) +#, pch = 17, size = 4) +
-  geom_point(data = g, aes(x = brd_lon, y = brd_lat, fill = loc, pch = loc), pch = 18, size = 4) +
-  facet_wrap(~mig) +
-  xlab("") + ylab("") +
-  theme_bw()
-
-
-ggplot(data = g, aes(x = win_lon, y = win_lat)) + geom_density_2d(bins = 3)
-
-
-
-head(mp_t)
-
-mp_t2 <- mp %>% mutate(loc2 = ifelse(loc == "Sedbergh", loc,
-                                     ifelse(loc == "Scotland" & (indiv != "Bird1" & indiv != "Bird2"), "Scotland Suth.", 
-                                            ifelse(loc == "Scotland" & indiv == "Bird1", "Scotland Spey.",
-                                                   ifelse(loc == "Scotland" & indiv == "Bird2", "Scotland Spey.",
-                                                          ifelse(indiv == "KL", "Senegal_1",
-                                                                 ifelse(indiv == "KP", "Senegal_2",
-                                                                        ifelse(indiv == "KT", "Senegal_3",
-                                                                               ifelse(indiv == "KW", "Senegal_4", "")))))))),
-                       mig2 = ifelse(is_wint == "NotWinter", mig, "winter")) %>% 
-  filter((jd < 70 | jd > 90) & (jd < 254 | jd > 274) & site > 0)
-
+# creating initial dataset
 mp_t2 <- mp %>% mutate(loc2 = ifelse(loc == "Sedbergh", loc,
                                      ifelse(loc == "Scotland" & (indiv != "Bird1" & indiv != "Bird2"), "Scotland Suth.", 
                                             ifelse(loc == "Scotland" & indiv == "Bird1", "Scotland Spey.",
                                                    ifelse(loc == "Scotland" & indiv == "Bird2", "Scotland Spey.",loc)))),
                        mig2 = ifelse(is_wint == "NotWinter", mig, "winter")) %>% 
-  filter((jd < 70 | jd > 90) & (jd < 254 | jd > 274) & site > 0)
+  filter((jd < 70 | jd > 90) & (jd < 254 | jd > 274) & site > 0) # remove 20 days either side of equinoxes
 
 
 mpt2 <- mp_t2 %>% ungroup %>%  dplyr::select(lon, lat, mig2, loc2) %>% na.omit %>% 
@@ -300,25 +197,33 @@ image(kd_win)
 kd_all <- rbind(c95_spr, c95_aut, c95_win)
 head(kd_all)
 
-head(g)
-brd_sites <- data.frame(loc = c("Sedbergh", "Scotland Spey.", "Scotland Suth.", "Senegal", "Senegal", "Senegal", "Senegal"), 
-                        lat = c(54.3, 58.5, 57.4, c(g$brd_lat[g$loc == "Senegal"])),
-                        lon = c(-2.55, -4.3, -3.5, c(g$brd_lon[g$loc == "Senegal"])))
 
+
+###########################################################
+#####          PLOTTING MIGRATION MAPS, FIGURE        #####
+###########################################################
+
+## set breeding sites data frame for plotting
+brd_sites <- data.frame(loc2 = c("Sedbergh", "Scotland", "Senegal", "Senegal", "Senegal", "Senegal"), 
+                        lat = c(54.3, 57.95, c(g$brd_lat[g$loc == "Senegal"])),
+                        lon = c(-2.55, -3.9, c(g$brd_lon[g$loc == "Senegal"]))) 
+
+
+## setting location for scorland separately
 g <- g %>% mutate(loc2 = ifelse(loc == "Scotland" & (indiv != "Bird1" & indiv != "Bird2"), "Scotland Suth.", 
                                 ifelse(loc == "Scotland" & (indiv == "Bird1" | indiv == "Bird2"), "Scotland Spey.", 
                                        ifelse(loc == "Scotland" & indiv == "Bird2", "Scotland Suth.",loc))))
 
 
-getwd()
-
-pl_c <- mp %>% filter((jd > 165 & jd < 240) | (jd > 75 & jd < 145)) %>% na.omit %>% 
+pl_c <- mp %>% 
+  # filter((jd > 165 & jd < 240) | (jd > 75 & jd < 145)) %>% ## what is this for?!?!?!??!?!
+  na.omit %>% 
   mutate(lat = ma((lat), n = 4),
          lon = ma((lon), n = 4)) %>% 
-  mutate(loc = ifelse(loc == "Scotland" & (indiv != "Bird1" & indiv != "Bird2"), "Scotland Suth.", 
+  mutate(loc2 = ifelse(loc == "Scotland" & (indiv != "Bird1" & indiv != "Bird2"), "Scotland Suth.", 
                       ifelse(loc == "Scotland" & (indiv == "Bird1" | indiv == "Bird2"), "Scotland Spey.", 
                              ifelse(loc == "Scotland" & indiv == "Bird2", "Scotland Suth.",loc)))) %>% 
-  filter((jd < 70 | jd > 90) & (jd < 254 | jd > 274) & site > 0)
+  filter((jd < 70 | jd > 90) & (jd < 254 | jd > 274) & site > 0) ## filter out movements and equinox
 
 
 pl_c$lat[pl_c$loc == "Sedbergh" & pl_c$lat > 52] <- 54.4
