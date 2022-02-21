@@ -1,7 +1,6 @@
 rm(list=ls())
 
 library(tidyverse)
-# library()
 library("raster")
 library("sp")
 library("rgdal")
@@ -34,14 +33,14 @@ gm_MigCon <- subset(gm2, loc != "Senegal") %>%
     # Max distance between breeding sites
     Tagging_max_dist = (max(lower(distm(cbind(brd_lon, brd_lat), fun = distHaversine))))/1000,
     # Mean distance between breeding sites
-    Tagging_median_dist = (meanDist(brd_lon, brd_lat))/1000, 
+    Tagging_median_dist = (medianDist(brd_lon, brd_lat))/1000, 
     # Mean winter longitude & lat
     Mean_final_long = mean(win_lon), 
     Mean_final_lat = mean(win_lat),
     # Max distance between winter sites
     Final_max_dist = (max(lower(distm(cbind(win_lon, win_lat), fun = distHaversine))))/1000,
     # Mean distance between winter sites
-    Final_median_dist = (meanDist(win_lon, win_lat))/1000, 
+    Final_median_dist = (medianDist(win_lon, win_lat))/1000, 
     # Distance between mean breding and winter site
     Migration_dist = (distHaversine(cbind(mean(brd_lon), mean(brd_lat)), cbind(mean(win_lon), mean(win_lat))))/1000) 
 
@@ -56,14 +55,14 @@ gm_MigCon_sen <- subset(gm2, loc2 == "Senegal") %>%
     # Max distance between wintering sites
     Tagging_max_dist = (max(lower(distm(cbind(win_lon, win_lat), fun = distHaversine))))/1000,
     # Mean distance between wintering sites
-    Tagging_median_dist = (meanDist(win_lon, win_lat))/1000, 
+    Tagging_median_dist = (medianDist(win_lon, win_lat))/1000, 
     # Mean winter longitude & lat
     Mean_final_long = mean(brd_lon), 
     Mean_final_lat = mean(brd_lat),
    # Max distance between breeding sites
     Final_max_dist = (max(lower(distm(cbind(brd_lon, brd_lat), fun = distHaversine))))/1000,
     # Mean distance between breeding sites
-    Final_median_dist = (meanDist(brd_lon, brd_lat))/1000, 
+    Final_median_dist = (medianDist(brd_lon, brd_lat))/1000, 
     # Distance between mean wintering and breeding site
     Migration_dist = (distHaversine(cbind(mean(win_lon), mean(win_lat)), cbind(mean(brd_lon), mean(brd_lat))))/1000) 
 

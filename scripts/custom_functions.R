@@ -2,7 +2,7 @@
 
 # CUSTOM FUNCTIONS FROM FINCH 2017 ---------------------------------------------------------
 # Mean inter-individual distance
-meanDist <- function(lon, lat){
+medianDist <- function(lon, lat){
   median(lower(distm(cbind(lon, lat), fun = distHaversine)))
 }
 
