@@ -32,3 +32,8 @@ ma <- function(arr, n=15){
   }
   res
 }
+
+
+mround <- function(x,base){
+  base*round(x/base)
+}

@@ -46,15 +46,15 @@ simp_sim <- function(start, end, n, print_out = T, move = c("north", "south"), S
         lon_val
         
         if(lat[i]<end[2]+4 & lat[i]>end[2]+2) {
-          lon_val <- rnorm(1, mean = -lon_shift[i], sd = SD - (SD/2))
+          lon_val <- rnorm(1, mean = -lon_shift[i], sd = SD-(SD/2))
         }
         
         if(lat[i]<end[2]+2.5 & lat[i]>end[2]+0.5) {
-          lon_val <- rnorm(1, mean = -lon_shift[i], sd = SD - (SD/3))
+          lon_val <- rnorm(1, mean = -lon_shift[i], sd = SD-(SD/3))
         }
         
         if(lat[i]<end[2]+1) {
-          lon_val <- rnorm(1, mean = -lon_shift[i], sd = 0.01)
+          lon_val <- rnorm(1, mean = -lon_shift[i], sd = SD-(SD/4))
         }
         
         while (abs(lon_val) > abs(lon_shift[i])+12) {
@@ -77,7 +77,7 @@ simp_sim <- function(start, end, n, print_out = T, move = c("north", "south"), S
         }
         
         if(lat[i]>end[2]-0.5) {
-          lon_val <- rnorm(1, mean = lon_shift[i], sd = 0.01)
+          lon_val <- rnorm(1, mean = lon_shift[i], sd = SD-(SD/4))
         }
         
         while (abs(lon_val) > abs(lon_shift[i])+12) {

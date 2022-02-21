@@ -10,20 +10,14 @@ library(rWind)
 library(rworldmap)  
 library(readr)
 library(gdistance)
-library(shape)  
+library(shape)
+library(rCAT)
+library(gtools)
 
+source('scripts/custom_functions.R')
+source("scripts/wind_analyses/calculate_costs/FunctionsSimulateSpringAut_Simple_after_viva.R")
+source("scripts/wind_analyses/calculate_costs/FixedWind_dl_2.r")
 
-mround <- function(x,base){
-  base*round(x/base)
-}
-
-
-setwd("C:/Users/tmond/OneDrive - Lancaster University/PhD Work/Analyses/GLS analyses/WindAnalysis/SimpleSimSprAutFunctionRealComp")
-setwd("C:/Users/mondainm/OneDrive - Lancaster University/PhD Work/Analyses/GLS analyses/WindAnalysis/SimpleSimSprAutFunctionRealComp")
-source("FunctionsSimulateSpringAut_Simple_after_viva.R")
-source("FixedWind_dl_2.r")
-
-setwd("C:/Users/tmond/OneDrive - Lancaster University/PhD Work/Analyses/GLS analyses/WindAnalysis/SimpleSimSprAutFunctionRealComp/Final")
 
 
 ###################################################################
@@ -34,29 +28,34 @@ setwd("C:/Users/tmond/OneDrive - Lancaster University/PhD Work/Analyses/GLS anal
 ##### load in individuals
 
 # Data frame has breeding locations 
-GLS_mig <- read_csv("C:/Users/tmond/OneDrive - Lancaster University/PhD Work/Analyses/GLS analyses/GLS_Summary_Movements_Stopovers/GLS_mig_R.csv")
+GLS_mig <- read_csv("data/movement_data/GLS_mig_R.csv")
 
 # wintering grounds averaged for birds that showed weird mid-winter movements
-ms <- read_csv("C:/Users/tmond/OneDrive - Lancaster University/PhD Work/Analyses/GLS analyses/Raw_Tracks_Mig_Schedules/All_Combined/Schedule_AllIndivs_MeanWint.csv")
+ms <- read_csv("data/movement_data/Schedule_AllIndivs_MeanWint.csv")
 
 ms$mig[ms$loc == "Senegal" & ms$lat < 25] <- "Winter"
 
 # positions of all individuals
-mp <- read_csv("C:/Users/tmond/OneDrive - Lancaster University/PhD Work/Analyses/GLS analyses/Raw_Tracks_Mig_Schedules/All_Combined/Positions_AllIndivs.csv")
+mp <- read_csv("data/movement_data/Positions_AllIndivs.csv")
 
+# tidying
 mp <- mp %>% mutate(mig = gsub("Autumn", replacement = "autumn", x = mig),
                     mig = gsub("Spring", replacement = "spring", x = mig)) %>% 
-  subset((jd <256 | jd > 276) & (jd < 69 | jd > 89)) %>% 
+  # subset((jd <256 | jd > 276) & (jd < 69 | jd > 89)) %>% # subset equinox
   na.omit %>% 
-  group_by(indiv, mig) %>% mutate(lat = c(smooth(lat, twiceit = T)),
-                                  lon = c(smooth(lon, twiceit = T)))
+  group_by(indiv, mig) %>% 
+  mutate(lat = c(smooth(lat, twiceit = T)),
+         lon = c(smooth(lon, twiceit = T)))
 
+# make sure bird 7 (Scotland) all set to autumn because failed.
 mp$mig[mp$indiv=='Bird7'] <- "autumn"
+
+
+
 
 ######################################################
 ####   Step 1: wind rasters for each individual   ####
 ######################################################
-
 
 ########## get weather data for each population separately
 ## store as different objects
@@ -168,19 +167,19 @@ for(w in 1:length(inds)) {
   
 }
 
-getwd()
-#output rasters
-# save(w_aut_ras, file = "w_aut_ras_final")
-# save(w_spr_ras, file = "w_spr_ras_final")
-load("w_aut_ras_final")
-load("w_spr_ras_final")
+
+## output rasters
+# save(w_aut_ras, file = "data/wind_analyses/wind_cost_rasters/w_aut_ras_final")
+# save(w_spr_ras, file = "data/wind_analyses/wind_cost_rasters/w_spr_ras_final")
+load("data/wind_analyses/wind_cost_rasters/w_aut_ras_final")
+load("data/wind_analyses/wind_cost_rasters/w_spr_ras_final")
 
 
-#output flow dispersion files
-# save(fd_aut_out, file = "fd_aut_out_final")
-# save(fd_spr_out, file = "fd_spr_out_final")
-load("fd_aut_out_final")
-load("fd_spr_out_final")
+## output flow dispersion files
+# save(fd_aut_out, file = "data/wind_analyses/wind_cost_rasters/fd_aut_out_final")
+# save(fd_spr_out, file = "data/wind_analyses/wind_cost_rasters/fd_spr_out_final")
+load("data/wind_analyses/wind_cost_rasters/fd_aut_out_final")
+load("data/wind_analyses/wind_cost_rasters/fd_spr_out_final")
 
 ## In the calculation of costs, need to ignore birds in spring that didn't return to 
 ## the breeding grounds
@@ -265,104 +264,9 @@ for(s in 1:length(inds)) {
 sim_t <- do.call("rbind", out_si)
 head(sim_t)
 
-# save(sim_t, file = "simulated_birds_100_finalV2")
-load("Final/simulated_birds_100_finalV2")
-
-
-ggplot(data = subset(sim_t, r_id == "KW" & indiv == 1), aes(x = lon, y = lat, group = r_id, colour=mig)) +
-  geom_path() 
-ggplot(data = sim_t, aes(x = lon, y = lat, group = interaction(indiv, mig), colour=loc)) +
-  geom_path() + facet_wrap(~mig)
-
-
-#######################################################################
-####     Step 2.5: Simulate 'real' birds for geolocation error     #### 
-#######################################################################
-
-# Don't need for geoloc error
-
-# Simulated birds travel between the breeding and wintering ground
-# of each real bird
-# but this time have a narrower flight distribution
-
-inds <- unique(ms$indiv)
-
-out_si_geo_err <- list()
-
-for(s in 1:length(inds)) {
-  print(inds[s])
-  
-  d_m <- subset(ms, indiv == inds[s])
-  # head(d_m)
-  
-  mig <- c("autumn", "spring")
-  
-  for(m in mig) {
-    
-    n_i <- gsub(pattern = "_", replacement = "", x = inds[s])
-    
-    
-    if(m == "autumn"){
-      
-      # start loc
-      id_s <- subset(GLS_mig, indiv == n_i)
-      start <- c(id_s$brd_lon, id_s$brd_lat)
-      
-      # end loc
-      id_e <- subset(GLS_mig, indiv == n_i)
-      end <- c(id_e$win_lon, id_e$win_lat)
-      
-      if(is.na(end[1]) | is.na(end[2])) {
-        print(paste("using predefined wintering ground", inds[s]))
-        end <- c(-16, 10)
-      }
-      
-      s_aut <- simp_sim(start = start, end = end, print_out = F, n = 100, move = "south", SD = 1)
-      
-    }
-    
-    if(m == "spring"){
-      
-      # start loc
-      id_s <- subset(GLS_mig, indiv == n_i)
-      start <- c(id_s$win_lon, id_s$win_lat)
-      
-      if(is.na(start[1]) | is.na(start[2])) {
-        print(paste("using predefined wintering ground", inds[s]))
-        start <- c(-16, 10)
-      }
-      
-      # end loc
-      id_e <- subset(GLS_mig, indiv == n_i)
-      end <- c(id_e$brd_lon, id_e$brd_lat)
-      
-      s_spr <- simp_sim(start = start, end = end, print_out = F, n = 100, move = "north", SD = 1)
-      
-    }
-    
-  }
-  
-  
-  s_aut <- data.frame(s_aut, mig = "autumn", loc = unique(d_m$loc), r_id = inds[s])
-  s_spr <- data.frame(s_spr, mig = "spring", loc = unique(d_m$loc), r_id = inds[s])
-  
-  sim_df <- rbind(s_aut, s_spr)
-  out_si_geo_err[[s]] <- sim_df
-  
-}
-
-
-sim_t_geo_err <- do.call("rbind", out_si_geo_err)
-head(sim_t_geo_err)
-
-# save(sim_t_geo_err, file = "simulated_birds_geolocation_error_100_finalV2")
-load("simulated_birds_geolocation_error_100_finalV2")
-
-
-ggplot(data = subset(sim_t_geo_err, r_id == "KW" & indiv == 1), aes(x = lon, y = lat, group = r_id, colour=mig)) +
-  geom_path() 
-ggplot(data = sim_t_geo_err, aes(x = lon, y = lat, group = interaction(indiv, mig), colour=loc)) +
-  geom_path() + facet_wrap(~mig)
+## output simulated bird tracks
+# save(sim_t, file = "data/wind_analyses/simulated_bird_tracks/simulated_birds_100_finalV2")
+load("data/wind_analyses/simulated_bird_tracks/simulated_birds_100_finalV2")
 
 
 ###########################################################
@@ -467,168 +371,22 @@ for(r in 1:length(r_birds)){
   
 }
 
-# saved at number 18. 
-# save(r_sim_out, file = "cost_out_sim_100inds_finalV2")
-load("cost_out_sim_100inds_finalV2")
+# save(r_sim_out, file = "data/wind_analyses/flight_costs/cost_out_sim_100inds_finalV2")
+load("data/wind_analyses/flight_costs/cost_out_sim_100inds_finalV2")
 
-
+# bind together
 s_out <- do.call("rbind", r_sim_out)
-
 head(s_out)
 
 s<-s_out
 colnames(s) <- c("cost_aut_rl", "cost_aut_ind", "cost_spr_rl", "cost_spr_ind", "sim_indiv", "r_id",      "loc")
 
-pivot_longer(s, cols = c("cost_aut_rl", "cost_spr_rl","cost_aut_ind", "cost_spr_ind"), 
-             names_to = c("mig", "type"), names_sep = "cost_", values_to = c("cost_rl", "cost_ind"))
-
-
 # get raw cost into long format 
 s_raw_c <- pivot_longer(s_out, cols = c("cost_aut", "cost_spr"), names_to = "mig", values_to = "cost")
-
 
 # get cost index into long format
 s_p <- pivot_longer(s_out, cols = c("cost_aut_ind", "cost_spr_ind"), names_to = "mig", values_to = "cost_ind")
 
-ggplot(data = s_p, aes(cost_ind, fill = mig)) + geom_histogram() +
-  facet_wrap(~mig)
-ggplot(data = s_p, aes(x = r_id, y = cost_ind, colour = mig)) + geom_boxplot()
-ggplot(data = s_p, aes(x = loc, y = cost_ind, colour = mig)) + geom_boxplot()
-
-
-
-###############################################################################
-####     Step 3.5: Get cost of simulated geolocation error bird tracks     #### Don't need for geolocation error
-###############################################################################
-
-# each track's cost is simulated relative to the conditions
-# the real bird experienced during it migration
-# This time running the simulated tracks with reduced 
-# standard deviations to try and simulate the geolocation error 
-# associated with each migration
-head(sim_t_geo_err)
-
-# smooth the tracks of simulated birds to be like
-# real birds
-sim_t_geo_err <- sim_t_geo_err %>% group_by(indiv, mig, r_id) %>% 
-  mutate(lon = c(smooth(lon, twiceit = T)),
-         lat = c(smooth(lat, twiceit = T)))
-
-r_birds <- unique(mp$indiv)
-
-r_sim_out_geo_err <- list()
-
-# start with getting the rasters from real birds
-for(r in 1:length(r_birds)){
-  print(r_birds[r])
-  
-  # get the corresponding raster for each real individual
-  fd_aut <- fd_aut_out[[r]]
-  fd_spr <- fd_spr_out[[r]]
-  
-  # get the simulated tracks corresponding to each real individual 
-  sim_t_r <- subset(sim_t_geo_err, r_id == r_birds[r])
-  
-  cost_out <- list()
-  
-  # for each simulated individual in the dataset
-  for(i in 1:length(unique(sim_t_r$indiv))) {
-    print(i)
-    
-    # get simulated individual 
-    sim_i <- subset(sim_t_r, indiv == i)
-    
-    head(sim_i)
-    
-    cst_ind_aut <- list()
-    cst_ind_spr <- list()
-    
-    # to get the cost for each migration
-    migs <- c("autumn", "spring")
-    
-    out_m_aut <- list()
-    out_m_spr <- list()
-    
-    for(m in migs){
-      print(m)
-      sim_i_m <- subset(sim_i, mig == m)
-      
-      for(x in 2:length(sim_i_m$lat)) {
-        
-        # print(x)
-        
-        if(unique(sim_i_m$mig) == "autumn") {
-          crds <- sim_i_m[,1:2]
-          cd_aut <- costDistance(fd_aut, SpatialPoints(crds[x-1,]), SpatialPoints(crds[x,]))
-          cst_ind_aut[[x]] <- cd_aut
-        }
-        
-        
-        if(unique(sim_i_m$mig) == "spring") {
-          crds <- na.omit(sim_i_m[,1:2])
-          cd_spr <- costDistance(fd_aut, SpatialPoints(crds[x-1,]), SpatialPoints(crds[x,]))
-          cst_ind_spr[[x]] <- cd_spr
-        }
-        
-        
-      }
-      
-      t_aut <- do.call("c",cst_ind_aut)
-      
-      t_spr <- do.call("c",cst_ind_spr)
-      
-      out_m_aut[[m]] <- t_aut
-      out_m_spr[[m]] <- t_spr
-      
-    }
-    
-    ca <- do.call("c", out_m_aut)
-    cs <- do.call("c", out_m_spr)
-    
-    df <- data.frame(cost_aut = sum(na.omit(ca[is.finite(ca)])), 
-                     cost_aut_ind = sum(na.omit(ca[is.finite(ca)]))/length(sim_i_m$lon), 
-                     cost_spr = sum(na.omit(cs[is.finite(cs)])), 
-                     cost_spr_ind = sum(na.omit(cs[is.finite(cs)]))/length(sim_i_m$lon),
-                     sim_indiv = i, r_id = r_birds[r], loc = unique(sim_i_m$loc))
-    
-    cost_out[[i]] <- df
-    
-  }
-  
-  
-  c_o <- do.call("rbind", cost_out)
-  
-  r_sim_out_geo_err[[r]] <- c_o
-  
-}
-
-
-# save(r_sim_out_geo_err, file = "cost_out_sim_geolocation_error_100inds_finalV2")
-load("cost_out_sim_geolocation_error_100inds_finalV2")
-
-
-s_out <- do.call("rbind", r_sim_out_geo_err)
-
-head(s_out)
-
-s<-s_out
-colnames(s) <- c("cost_aut_rl", "cost_aut_ind", "cost_spr_rl", "cost_spr_ind", "sim_indiv", "r_id",      "loc")
-
-pivot_longer(s, cols = c("cost_aut_rl", "cost_spr_rl","cost_aut_ind", "cost_spr_ind"), 
-             names_to = c("mig", "type"), names_sep = "cost_", values_to = c("cost_rl", "cost_ind"))
-
-
-# get raw cost into long format 
-s_raw_c <- pivot_longer(s_out, cols = c("cost_aut", "cost_spr"), names_to = "mig", values_to = "cost")
-
-
-# get cost index into long format
-s_p <- pivot_longer(s_out, cols = c("cost_aut_ind", "cost_spr_ind"), names_to = "mig", values_to = "cost_ind")
-
-ggplot(data = s_p, aes(cost_ind, fill = mig)) + geom_histogram() +
-  facet_wrap(~mig)
-ggplot(data = s_p, aes(x = r_id, y = cost_ind, colour = mig)) + geom_boxplot()
-ggplot(data = s_p, aes(x = loc, y = cost_ind, colour = mig)) + geom_boxplot()
 
 
 
@@ -637,10 +395,10 @@ ggplot(data = s_p, aes(x = loc, y = cost_ind, colour = mig)) + geom_boxplot()
 ##########################################################
 
 # wintering grounds averaged for birds that showed weird mid-winter movements
-ms <- read_csv("C:/Users/tmond/OneDrive - Lancaster University/PhD Work/Analyses/GLS analyses/Raw_Tracks_Mig_Schedules/All_Combined/Schedule_AllIndivs_RawWint.csv")
+ms <- read_csv("data/movement_data/Schedule_AllIndivs_RawWint.csv")
 
 # positions of all individuals
-mp <- read_csv("C:/Users/tmond/OneDrive - Lancaster University/PhD Work/Analyses/GLS analyses/Raw_Tracks_Mig_Schedules/All_Combined/Positions_AllIndivs.csv")
+mp <- read_csv("data/movement_data/Positions_AllIndivs.csv")
 
 # only sedbergh birds
 # mp <- subset(mp, loc == "Sedbergh")
@@ -656,16 +414,17 @@ ms$mig[ms$loc == "Senegal" & ms$lat < 25] <- "Winter"
 mp <- mp %>% 
   # subset((jd <256 | jd > 276) & (jd < 69 | jd > 89)) %>% # removed because I account for equinoxes lower down in the for loop based on each individual's mig sched  
   na.omit %>% 
-  group_by(indiv) %>% mutate(lat = smooth(lat, twiceit = T),
-                             lon = smooth(lon, twiceit = T))
+  group_by(indiv) %>% 
+  mutate(lat = c(smooth(lat, twiceit = T)),
+         lon = c(smooth(lon, twiceit = T)))
 
 mp$mig[mp$indiv=='Bird7'] <- "autumn"
 
 
-# # need to make a sequence for each senegalese bird from the breeding grounds
+# # This code makes a sequence for each senegalese bird from the breeding grounds
 # # to the start of the track and vice versa
 # # because the tracks don't go all the way to the breeding grounds
-# # Might not matter because am dividing by the number of cells the birds cross.... 
+# # doesn't have any effect on final results. 
 #
 # head(GLS_mig)
 # gm <- subset(GLS_mig, tag_loc == "sen")
@@ -822,7 +581,7 @@ for(i in 1:length(i_r)){
       cst_track_spr_sim <- list()
       
       crds_sim <- subset(locs_sim, name == sim_inds[s])
-
+      
       # get the cost between coord x and x - 1 
       for(x_s in 2:dim(crds_sim)[1]) {
         
@@ -891,7 +650,7 @@ for(i in 1:length(i_r)){
         
         # save the DFs for each individual within each migration
         cost_individual_sim[[s]] <- data.frame(cost = sum(na.omit(t_aut)), r_in = i_r[i], indiv = sim_inds[s], 
-                         loc = unique(i1$loc), mig = migs[m], c_ind = sum(na.omit(t_aut))/(dim(crds)[1]))
+                                               loc = unique(i1$loc), mig = migs[m], c_ind = sum(na.omit(t_aut))/(dim(crds)[1]))
         
       }
       
@@ -901,12 +660,12 @@ for(i in 1:length(i_r)){
         
         # save the DFs for each individual within each migration
         cost_individual_sim[[s]] <- data.frame(cost = sum(na.omit(t_spr)), r_in = i_r[i], indiv = sim_inds[s], 
-                         loc = unique(i1$loc), mig = migs[m], c_ind = sum(na.omit(t_spr))/(dim(crds)[1]))
+                                               loc = unique(i1$loc), mig = migs[m], c_ind = sum(na.omit(t_spr))/(dim(crds)[1]))
         
       }
       
     }
-   
+    
     # save the two migrations of the bird
     cost_out_sim[[m]] <- do.call("rbind", cost_individual_sim)
     
@@ -1007,52 +766,9 @@ for(i in 1:length(i_r)){
 # Cost of the tracks of real birds
 cst_mig <- do.call("rbind", all_out)
 head(cst_mig)
-# write.csv(cst_mig, file = "cost_mig_individuals_final.csv")
-cst_mig <- read.csv("cost_mig_individuals_final.csv")[,-1]
 
-
-ggplot(data = cst_mig, aes(x = c_ind, fill = loc)) + geom_histogram() +
-  facet_wrap(~mig)
-
-ggplot() + geom_boxplot(data = cst_mig, aes(x = loc, y = c_ind, colour = mig)) +
-  geom_boxplot(data = s_p, aes(x = loc, y = cost_ind, colour = mig))
-
-summary(lm(c_ind ~ mig, data = cst_mig))
-
-
-head(cst_mig)
-head(s_p)
-
-sp_t <- s_p[,c(2,4:7)] %>% mutate(mig = ifelse(mig == "cost_aut_ind", "autumn", "spring"),
-                                  type = "sim")
-colnames(sp_t) <- c("cost", "indiv", "loc", "mig", "c_ind", "type")
-
-cst_mig$type <- "real"
-
-com_d <- rbind(sp_t, cst_mig)
-
-
-##### Remove birds that don't have return trips
-com_d$c_ind[com_d$mig == "spring" & com_d$indiv == "AD"] <- NA
-com_d$c_ind[com_d$mig == "spring" & com_d$indiv == "Bird2"] <- NA
-com_d$c_ind[com_d$mig == "spring" & com_d$indiv == "Bird7"] <- NA
-
-
-ggplot(data = com_d, aes(x = loc, y = c_ind, colour = type)) + geom_boxplot() +
-  facet_wrap(~mig)
-
-
-ggplot(data = subset(com_d, type == "sim"), aes(c_ind, fill = loc)) + geom_histogram() +
-  geom_vline(data = subset(com_d, type == "real"), aes(xintercept = c_ind, colour = loc)) +
-  facet_wrap(mig~loc)
-
-ggplot(data = subset(com_d, type == "sim"), aes(c_ind, fill = "simulated")) + geom_density() +
-  geom_density(data = subset(com_d, type == "real"), aes(c_ind, fill = "real")) +
-  facet_wrap(mig~loc)
-
-
-ggplot(data = com_d, aes(x = loc, y = c_ind, fill = type)) + geom_boxplot() +
-  facet_wrap(~mig)
+# write.csv(cst_mig, file = "data/wind_analyses/flight_costs/cost_mig_individuals_final.csv")
+cst_mig <- read.csv("data/wind_analyses/flight_costs/cost_mig_individuals_final.csv")[,-1]
 
 
 ######################################################
@@ -1060,67 +776,7 @@ ggplot(data = com_d, aes(x = loc, y = c_ind, fill = type)) + geom_boxplot() +
 ###
 
 cst_mig_sim_rl <- do.call("rbind", all_out_sim)
-# write.csv(cst_mig_sim_rl, file = "cost_mig_individuals_simulated_geolocation_error_final.csv")
 
-### real with geolocation error vs simulated random
-head(s_p)
-head(cst_mig_sim_rl)
-unique(cst_mig_sim_rl$c_ind[cst_mig_sim_rl$mig == 'autumn'])
-
-sp_t <- s_p[,c(2,4:7)] %>% mutate(mig = ifelse(mig == "cost_aut_ind", "autumn", "spring"),
-                                  type = "sim")
-colnames(sp_t) <- c("cost", "indiv", "loc", "mig", "c_ind", "type")
-
-cst_mig_sim_rl$type <- "real_sim"
-
-cst_mig_sim_rl <- cst_mig_sim_rl[,c(1:2, 4:7)]
-head(cst_mig_sim_rl)
-
-colnames(cst_mig_sim_rl) <- c("cost", "indiv", "loc", "mig", "c_ind", "type")
-
-com_d_sim <- rbind(sp_t, cst_mig_sim_rl)
-
-
-##### Remove birds that don't have return trips
-com_d_sim$c_ind[com_d_sim$mig == "spring" & com_d_sim$indiv == "AD"] <- NA
-com_d_sim$c_ind[com_d_sim$mig == "spring" & com_d_sim$indiv == "Bird2"] <- NA
-com_d_sim$c_ind[com_d_sim$mig == "spring" & com_d_sim$indiv == "Bird7"] <- NA
-
-
-ggplot(data = com_d_sim, aes(x = loc, y = c_ind, colour = type)) + geom_boxplot() +
-  facet_wrap(~mig)
-
-
-ggplot(data = com_d_sim, aes(c_ind, fill = type)) + geom_histogram() +
-  facet_wrap(mig~loc)
-
-ggplot(data = subset(com_d_sim, type == "sim"), aes(c_ind, fill = "simulated")) + geom_density() +
-  geom_density(data = subset(com_d_sim, type == "real_sim"), aes(c_ind, fill = "real")) +
-  facet_wrap(mig~loc, scales = 'free')
-
-
-
-## check that the tracks look okay
-m_pos_nw <- do.call("rbind", mig_pos)
-head(m_pos_nw)
-
-ggplot(data = subset(m_pos_nw, loc == "Sedbergh"), aes(x = lon, y = lat, group = indiv, colour = mig)) + geom_path() +
-  geom_point(aes(x = -2.5, y = 54.5), size = 4) +
-  geom_point(aes(x = -16, y = 10), size = 4) +
-  facet_wrap(mig~indiv) 
-ggplot(data = subset(m_pos_nw, loc == "Scotland"), aes(x = lon, y = lat, group = indiv, colour = mig)) + geom_path() +
-  geom_point(aes(x = -2.5, y = 54.5), size = 4) +
-  geom_point(aes(x = -16, y = 10), size = 4) +
-  facet_wrap(~indiv) 
-ggplot(data = subset(m_pos_nw, loc == "Senegal"), aes(x = lon, y = lat, group = indiv, colour = mig)) + geom_path() +
-  geom_point(aes(x = -2.5, y = 54.5), size = 4) +
-  geom_point(aes(x = -16, y = 10), size = 4) +
-  facet_wrap(~indiv) 
-
-ggplot(data = subset(mp, loc == "Sedbergh"), aes(x = lon, y = lat, group = indiv, colour = mig)) + geom_path() +
-  geom_point(aes(x = -2.5, y = 54.5), size = 4) +
-  geom_point(aes(x = -16, y = 10), size = 4) +
-  facet_wrap(mig~indiv) 
-
-ggplot(data = cst_mig, aes(x = indiv, y = cost, colour = mig)) + geom_point()
+# write.csv(cst_mig_sim_rl, file = "data/wind_analyses/flight_costs/cost_mig_individuals_simulated_geolocation_error_final.csv")
+cst_mig_sim_rl <- read.csv("data/wind_analyses/flight_costs/cost_mig_individuals_simulated_geolocation_error_final.csv")
 

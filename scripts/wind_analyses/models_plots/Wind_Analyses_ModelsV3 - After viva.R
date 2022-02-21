@@ -13,18 +13,14 @@ library(readr)
 library(lmerTest)
 
 
-setwd("C:/Users/tmond/OneDrive - Lancaster University/PhD Work/Analyses/GLS analyses/WindAnalysis/SimpleSimSprAutFunctionRealComp/Final")
-setwd("C:/Users/mondainm/OneDrive - Lancaster University/PhD Work/Analyses/GLS analyses/WindAnalysis/SimpleSimSprAutFunctionRealComp/Final")
-
-
 #####     load simulated bird costs     #####
-load("cost_out_sim_100inds_finalV2")
+load("data/wind_analyses/flight_costs/cost_out_sim_100inds_finalV2")
 
 #####     load real bird costs     #####
-cst_mig <- read.csv("cost_mig_individuals_final.csv")[,-1]
+cst_mig <- read.csv("data/wind_analyses/flight_costs/cost_mig_individuals_final.csv")[,-1]
 
 #####     load geolocation error simulation     #####
-glc_err <- read.csv("cost_mig_individuals_simulated_geolocation_error_final.csv")
+glc_err <- read.csv("data/wind_analyses/flight_costs/cost_mig_individuals_simulated_geolocation_error_final.csv")
 glc_err <- glc_err[,c(2:3, 5:7)]
 glc_err$type <- "real_gls_err"
 
