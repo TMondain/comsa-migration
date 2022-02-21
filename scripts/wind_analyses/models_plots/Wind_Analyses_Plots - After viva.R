@@ -161,7 +161,7 @@ raw_c_pl <- ggplot(data = raw_comb, aes(x = loc, y = cost, fill = type)) + geom_
   scale_x_discrete(labels = c("Cumbria", "Senegal", "Scotland"))
 raw_c_pl
 
-ggsave(raw_c_pl, file = "outputs/wind_analyses/Cost_raw_BoxplotV2.tiff", device = "tiff", dpi = 600, height = 8, width = 8)
+# ggsave(raw_c_pl, file = "outputs/wind_analyses/Cost_raw_BoxplotV2.tiff", device = "tiff", dpi = 600, height = 8, width = 8)
 
 
 
@@ -186,16 +186,18 @@ ggplot(mp, aes(x = lon, y = lat, colour = mig, group = interaction(indiv, mig)))
 unique(mp$indiv)
 
 ras <- as(w_aut_ras[[7]], "SpatialPixelsDataFrame")
-ra <- as.data.frame(ras)
+ra <- as.data.frame(ras) %>% 
+  mutate(mig = 'autumn')
 
 
 ras_s <- as(w_spr_ras[[7]], "SpatialPixelsDataFrame")
-rs <- as.data.frame(ras_s)
+rs <- as.data.frame(ras_s) %>% 
+  mutate(mig = 'spring')
 
 dk_spr <- ggplot() + geom_tile(data = rs, aes(x= x, y = y, fill = speed)) +
   geom_polygon(data = pal.shp, aes(x = long, y = lat, group = group),
                fill = NA, colour = "black", size = 0.2) +
-  coord_map("mercator", xlim = c(-30, 8), ylim = c(0, 60)) +
+  coord_map("mercator", xlim = c(-25, 8), ylim = c(0, 60)) +
   geom_path(data = subset(mp, indiv == "DK" & mig == "spring"), aes(x = lon, y = lat, colour = mig, group = mig)) +
   xlab("") + ylab("") +
   theme_bw()+
@@ -206,7 +208,7 @@ dk_spr <- ggplot() + geom_tile(data = rs, aes(x= x, y = y, fill = speed)) +
 dk_aut <- ggplot() + geom_tile(data = ra, aes(x= x, y = y, fill = speed)) +
   geom_polygon(data = pal.shp, aes(x = long, y = lat, group = group),
                fill = NA, colour = "black", size = 0.2) +
-  coord_map("mercator", xlim = c(-30, 8), ylim = c(0, 60)) +
+  coord_map("mercator", xlim = c(-25, 8), ylim = c(0, 60)) +
   geom_path(data = subset(mp, indiv == "DK" & mig == "autumn"), aes(x = lon, y = lat, colour = mig, group = mig)) +
   xlab("") + ylab("") +
   theme_bw() +
@@ -217,9 +219,28 @@ dk_aut <- ggplot() + geom_tile(data = ra, aes(x= x, y = y, fill = speed)) +
 ex_pl_ras <- dk_aut|dk_spr + plot_layout(guides = 'collect')
 ex_pl_ras
 
-getwd()
 
 ggsave(ex_pl_ras, file = "outputs/Example_Plot_raster_DK2.tiff", device = "tiff", dpi = 600, width = 8, height = 5)
+
+dk_comb <- rbind(ra, rs)
+
+dk_examp <- ggplot() + 
+  geom_tile(data = dk_comb, aes(x= x, y = y, fill = speed)) +
+  geom_polygon(data = pal.shp, aes(x = long, y = lat, group = group),
+               fill = NA, colour = "black", size = 0.2) +
+  coord_map("mercator", xlim = c(-25, 8), ylim = c(0, 60)) +
+  geom_path(data = subset(mp, indiv == "DK"), aes(x = lon, y = lat, colour = mig, group = mig)) +
+  xlab("") + ylab("") +
+  theme_bw() +
+  scale_colour_manual(values = c('#F8766D','#F8766D')) +
+  guides(colour = 'none') +
+  theme(text = element_text(size = 15)) + 
+  scale_fill_continuous(name = "Wind speed") +
+  facet_wrap(~mig, ncol = 2,
+             labeller = as_labeller(c(autumn = 'Autumn', spring = 'Spring')))
+
+ggsave(dk_examp, file = "outputs/Example_Plot_raster_DK2_patch.tiff", device = "tiff", dpi = 600, width = 8, height = 5)
+
 
 
 rs_d <- rs %>% mutate(lat = mround(y, 3),
@@ -284,6 +305,9 @@ ex_pl_ras_wind
 #####      Plot 4 : Simulated bird tracks       #####
 #####################################################
 
+# resize palearctic flyway
+pal.shp <- world.shp %>% crop(., extent(-80, 155, -40, 90)) %>% fortify
+
 
 head(sim_t)
 pl_t <- sim_t %>% mutate(loc = as.character(loc),
@@ -292,8 +316,8 @@ pl_t <- sim_t %>% mutate(loc = as.character(loc),
                                               ifelse(loc == "Scotland" & r_id == "Bird1", "Scotland Spey.",
                                                      ifelse(loc == "Scotland" & r_id == "Bird2", "Scotland Spey.", loc))))) %>% 
   group_by(indiv, mig, loc, r_id) %>% 
-  mutate(lon = smooth(lon, twiceit = T),
-         lat = smooth(lat, twiceit = T),
+  mutate(lon = c(smooth(lon, twiceit = T)),
+         lat = c(smooth(lat, twiceit = T)),
          lon_seq = seq(1, length(lon)))
 
 plt_sum <- pl_t %>% 
@@ -302,7 +326,7 @@ plt_sum <- pl_t %>%
             lat = mean(lat))
 
 
-ap <- ggplot(data = pl_t, aes(x = lon, y = lat, group = interaction(indiv, mig, loc, r_id), colour = loc2)) + 
+ap <- ggplot(data = pl_t, aes(x = lon, y = lat, group = interaction(indiv, mig, loc, r_id), colour = loc)) + 
   geom_path() +
   geom_polygon(data = pal.shp, aes(x = long, y = lat, group = group),
                fill = NA, colour = "black", size = 0.2) +
@@ -311,11 +335,11 @@ ap <- ggplot(data = pl_t, aes(x = lon, y = lat, group = interaction(indiv, mig, 
   ylab("") + xlab("") +
   theme_bw() + 
   theme(text = element_text(size = 15)) +
-  scale_colour_discrete(labels = c("Scotland Spey.", "Scotland Suth.", 
+  scale_colour_discrete(labels = c("Scotland", 
                                    "Cumbria", "Senegal"))
 
 
-sp <- ggplot(data = plt_sum, aes(x = lon, y = lat, group = interaction(mig, loc, r_id), colour = loc2)) +
+sp <- ggplot(data = plt_sum, aes(x = lon, y = lat, group = interaction(mig, loc, r_id), colour = loc)) +
   geom_polygon(data = pal.shp, aes(x = long, y = lat, group = group),
                fill = NA, colour = "black", size = 0.2) +
   coord_map("mercator", xlim = c(-30, 35), ylim = c(0, 75)) + 
@@ -324,12 +348,10 @@ sp <- ggplot(data = plt_sum, aes(x = lon, y = lat, group = interaction(mig, loc,
   ylab("") + xlab("") +
   theme_bw() + 
   theme(text = element_text(size = 15)) +
-  scale_colour_discrete(labels = c("Scotland Spey.", "Scotland Suth.", 
+  scale_colour_discrete(labels = c("Scotland", 
                                    "Cumbria", "Senegal"))
 
 cp <- ap + sp + plot_layout(guides = 'collect')
-
-# cp <- plot_grid(ap, sp, ncol = 2)#, labels = c("a", "b"))
 cp
 
 ggsave(cp, file = "outputs/Comb_Sim_Sum_pl2.tiff", device = "tiff", width = 10, height = 5)
