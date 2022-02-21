@@ -14,31 +14,29 @@ library(cowplot)
 library(lubridate)
 library(patchwork)
 
-setwd("C:/Users/tmond/OneDrive - Lancaster University/PhD Work/Analyses/GLS analyses/WindAnalysis/SimpleSimSprAutFunctionRealComp/Final")
-setwd("C:/Users/mondainm/OneDrive - Lancaster University/PhD Work/Analyses/GLS analyses/WindAnalysis/SimpleSimSprAutFunctionRealComp/Final")
-
+source('scripts/custom_functions.R')
 
 #####     load rasters for plotting     #####
-load("w_aut_ras_final")
-load("w_spr_ras_final")
+load("data/wind_analyses/wind_cost_rasters/w_aut_ras_final")
+load("data/wind_analyses/wind_cost_rasters/w_spr_ras_final")
 
 
 #####     load simulated bird tracks for plotting     #####
-load("simulated_birds_100_finalV2")
+load("data/wind_analyses/simulated_bird_tracks/simulated_birds_100_finalV2")
 
 
 #####     load simulated bird costs     #####
-load("cost_out_sim_100inds_finalV2")
+load("data/wind_analyses/flight_costs/cost_out_sim_100inds_finalV2")
 s_out <- do.call("rbind", r_sim_out)
 head(s_out)
 
 
 #####     load real bird costs     #####
-cst_mig <- read.csv("cost_mig_individuals_final.csv")[,-1]
+cst_mig <- read.csv("data/wind_analyses/flight_costs/cost_mig_individuals_final.csv")[,-1]
 
 
 #####     load geolocation error simulation     #####
-glc_error <- read.csv("cost_mig_individuals_simulated_geolocation_error_final.csv")
+glc_error <- read.csv("data/wind_analyses/flight_costs/cost_mig_individuals_simulated_geolocation_error_final.csv")
 glc_err <- glc_error[,c(2:3, 5:7)]
 glc_err$type <- "real_gls_err"
 
@@ -63,8 +61,7 @@ head(com_d)
 
 #####     Get migration positions real birds     #####
 # positions of all individuals
-mp <- read_csv("C:/Users/tmond/OneDrive - Lancaster University/PhD Work/Analyses/GLS analyses/Raw_Tracks_Mig_Schedules/All_Combined/Positions_AllIndivs.csv")
-mp <- read_csv("C:/Users/mondainm/OneDrive - Lancaster University/PhD Work/Analyses/GLS analyses/Raw_Tracks_Mig_Schedules/All_Combined/Positions_AllIndivs.csv")
+mp <- read_csv("data/movement_data/Positions_AllIndivs.csv")
 
 mp <- mp %>% mutate(mig = gsub(pattern = "Spring", replacement = "spring", x = mig),
                     mig = gsub(pattern = "Autumn", replacement = "autumn", x = mig))
@@ -91,7 +88,7 @@ c_ind_pl <- ggplot(data = subset(com_d, type != "real_gls_err"), aes(x = loc, y 
   geom_boxplot() +
   facet_wrap(~mig, labeller=labeller(mig=c(spring='Spring',autumn='Autumn'))) + 
   guides(fill=guide_legend(title="Bird type"),
-         colour = FALSE) +
+         colour = 'none') +
   xlab("Tagging location") + ylab("Cost index") + 
   scale_fill_manual(labels = c("Observed", "Simulated"), values = c("#F8766D", "#619CFF")) +
   theme_classic() +
@@ -101,7 +98,8 @@ c_ind_pl <- ggplot(data = subset(com_d, type != "real_gls_err"), aes(x = loc, y 
   scale_x_discrete(labels = c("Cumbria", "Senegal", "Scotland"))
 c_ind_pl
 
-# ggsave(c_ind_pl, file = "AnalysesAndPlots/Outputs/Cost_index_BoxplotV2.tiff",
+# # save
+# ggsave(c_ind_pl, file = "outputs/wind_analyses/Cost_index_BoxplotV2.tiff",
 #        device = "tiff", dpi = 600, height = 7, width = 8)
 
 
@@ -109,7 +107,7 @@ c_ind_pl <- ggplot(data = com_d, aes(x = loc, y = c_ind, fill = type)) +
   geom_boxplot() +
   facet_grid(~mig, labeller=labeller(mig=c(spring='Spring',autumn='Autumn'))) + 
   guides(fill=guide_legend(title="Bird type"),
-         colour = FALSE) +
+         colour = 'none') +
   xlab("Tagging location") + ylab("Cost index") + 
   scale_fill_manual(labels = c("Observed", "Geolocation error", "Simulated"), values = c("#F8766D", "#00BA38", "#619CFF")) +
   theme_classic() +
@@ -119,7 +117,8 @@ c_ind_pl <- ggplot(data = com_d, aes(x = loc, y = c_ind, fill = type)) +
   scale_x_discrete(labels = c("Cumbria", "Senegal", "Scotland"))
 c_ind_pl
 
-# ggsave(c_ind_pl, file = "AnalysesAndPlots/Outputs/Cost_index_BoxplotV2_geoloc_error.tiff",
+# # save
+# ggsave(c_ind_pl, file = "outputs/wind_analyses/Cost_index_BoxplotV2_geoloc_error.tiff",
 #        device = "tiff", dpi = 600, height = 7, width = 8)
 
 
@@ -149,16 +148,12 @@ colnames(rs) <- c( "indiv", "loc", "mig", "cost", "type")
 
 cst_mig$type <- "Real"
 
-ggplot(data = rs, aes(x= loc, y = cost)) + geom_boxplot() +
-  geom_boxplot(data = cst_mig, aes(x = loc, y = cost)) +
-  facet_grid(~mig)
-
 raw_comb <- rbind(rs, cst_mig[,c(2:4, 1, 6)], ge)
 
 raw_c_pl <- ggplot(data = raw_comb, aes(x = loc, y = cost, fill = type)) + geom_boxplot() +
   facet_grid(~mig, labeller=labeller(mig=c(spring='Spring',autumn='Autumn'))) + 
   guides(fill=guide_legend(title="Bird type"),
-         colour = FALSE) +
+         colour = 'none') +
   xlab("Tagging location") + ylab("Cost") + 
   # scale_fill_manual(labels = c("Real", "Simulated"), values = c("#F8766D", "#619CFF")) +
   theme_classic() +
@@ -166,7 +161,7 @@ raw_c_pl <- ggplot(data = raw_comb, aes(x = loc, y = cost, fill = type)) + geom_
   scale_x_discrete(labels = c("Cumbria", "Senegal", "Scotland"))
 raw_c_pl
 
-# ggsave(raw_c_pl, file = "AnalysesAndPlots/Outputs/Cost_raw_BoxplotV2.tiff", device = "tiff", dpi = 600, height = 8, width = 8)
+ggsave(raw_c_pl, file = "outputs/wind_analyses/Cost_raw_BoxplotV2.tiff", device = "tiff", dpi = 600, height = 8, width = 8)
 
 
 
@@ -175,17 +170,9 @@ raw_c_pl
 #####################################################
 
 # load world map
-world.shp <- readOGR("C:/Users/tmond/OneDrive - Lancaster University/PhD Work/Fieldwork Data/Geolocator data/worldmap.geojson", verbose = F)
+world.shp <- readOGR("data/worldmap.geojson", verbose = F)
 pal.shp <- world.shp %>% crop(., extent(-25, 10, -5, 60)) %>% fortify
 
-# for smoothing
-ma <- function(arr, n=15){
-  res = arr
-  for(i in n:length(arr)){
-    res[i] = mean(arr[(i-n+1):i])
-  }
-  res
-}
 
 head(mp)
 mp <- mp %>% filter((jd > 165 & jd < 240) | (jd > 75 & jd < 145)) %>% 
@@ -228,19 +215,11 @@ dk_aut <- ggplot() + geom_tile(data = ra, aes(x= x, y = y, fill = speed)) +
   scale_fill_continuous(name = "Wind speed")
 
 ex_pl_ras <- dk_aut|dk_spr + plot_layout(guides = 'collect')
-
-# ex_pl_ras <- grid.arrange(dk_aut, dk_spr, ncol = 2)
 ex_pl_ras
 
 getwd()
 
-# ggsave(ex_pl_ras, file = "Example_Plot_raster_DK2.tiff", device = "tiff", dpi = 600, width = 8, height = 5)
-
-
-# With wind direction...
-mround <- function(x,base){
-  base*round(x/base)
-}
+ggsave(ex_pl_ras, file = "outputs/Example_Plot_raster_DK2.tiff", device = "tiff", dpi = 600, width = 8, height = 5)
 
 
 rs_d <- rs %>% mutate(lat = mround(y, 3),
@@ -296,7 +275,7 @@ w_aut <- ggplot() + geom_tile(data = ra, aes(x= x, y = y, fill = speed)) +
 ex_pl_ras_wind <- w_aut|w_spring + plot_layout(guides = 'collect')
 ex_pl_ras_wind
 
-# ggsave(ex_pl_ras_wind, file = "AnalysesAndPlots/Outputs/Example_Plot_raster_and_Wind_DKV2.tiff", device = "tiff", dpi = 600, width = 8, height = 5)
+# ggsave(ex_pl_ras_wind, file = "outputs/Example_Plot_raster_and_Wind_DKV2.tiff", device = "tiff", dpi = 600, width = 8, height = 5)
 
 
 
@@ -305,9 +284,6 @@ ex_pl_ras_wind
 #####      Plot 4 : Simulated bird tracks       #####
 #####################################################
 
-world.shp <- readOGR("C:/Users/tmond/OneDrive - Lancaster University/PhD Work/Fieldwork Data/Geolocator data/worldmap.geojson", verbose = F)
-pal.shp <- world.shp %>% crop(., extent(-80, 155, -40, 90)) %>% fortify
-
 
 head(sim_t)
 pl_t <- sim_t %>% mutate(loc = as.character(loc),
@@ -315,18 +291,18 @@ pl_t <- sim_t %>% mutate(loc = as.character(loc),
                                        ifelse(loc == "Scotland" & (r_id != "Bird1" & r_id != "Bird2"), "Scotland Suth.", 
                                               ifelse(loc == "Scotland" & r_id == "Bird1", "Scotland Spey.",
                                                      ifelse(loc == "Scotland" & r_id == "Bird2", "Scotland Spey.", loc))))) %>% 
-  group_by(indiv, mig, loc2, r_id) %>% 
+  group_by(indiv, mig, loc, r_id) %>% 
   mutate(lon = smooth(lon, twiceit = T),
          lat = smooth(lat, twiceit = T),
          lon_seq = seq(1, length(lon)))
 
 plt_sum <- pl_t %>% 
-  group_by(r_id, mig, loc2, lon_seq) %>% 
+  group_by(r_id, mig, loc, lon_seq) %>% 
   summarise(lon = mean(lon),
             lat = mean(lat))
 
 
-ap <- ggplot(data = pl_t, aes(x = lon, y = lat, group = interaction(indiv, mig, loc2, r_id), colour = loc2)) + 
+ap <- ggplot(data = pl_t, aes(x = lon, y = lat, group = interaction(indiv, mig, loc, r_id), colour = loc2)) + 
   geom_path() +
   geom_polygon(data = pal.shp, aes(x = long, y = lat, group = group),
                fill = NA, colour = "black", size = 0.2) +
@@ -339,7 +315,7 @@ ap <- ggplot(data = pl_t, aes(x = lon, y = lat, group = interaction(indiv, mig, 
                                    "Cumbria", "Senegal"))
 
 
-sp <- ggplot(data = plt_sum, aes(x = lon, y = lat, group = interaction(mig, loc2, r_id), colour = loc2)) +
+sp <- ggplot(data = plt_sum, aes(x = lon, y = lat, group = interaction(mig, loc, r_id), colour = loc2)) +
   geom_polygon(data = pal.shp, aes(x = long, y = lat, group = group),
                fill = NA, colour = "black", size = 0.2) +
   coord_map("mercator", xlim = c(-30, 35), ylim = c(0, 75)) + 
@@ -356,5 +332,4 @@ cp <- ap + sp + plot_layout(guides = 'collect')
 # cp <- plot_grid(ap, sp, ncol = 2)#, labels = c("a", "b"))
 cp
 
-getwd()
-# ggsave(cp, file = "AnalysesAndPlots/Outputs/Comb_Sim_Sum_pl2.tiff", device = "tiff", width = 10, height = 5)
+ggsave(cp, file = "outputs/Comb_Sim_Sum_pl2.tiff", device = "tiff", width = 10, height = 5)
