@@ -16,6 +16,9 @@ library(patchwork)
 
 source('scripts/custom_functions.R')
 
+#####     load world map     #####
+world.shp <- readOGR("data/worldmap.geojson", verbose = F)
+
 #####     load rasters for plotting     #####
 load("data/wind_analyses/wind_cost_rasters/w_aut_ras_final")
 load("data/wind_analyses/wind_cost_rasters/w_spr_ras_final")
@@ -169,8 +172,6 @@ raw_c_pl
 #####     Plot 3 : Example track and raster     #####
 #####################################################
 
-# load world map
-world.shp <- readOGR("data/worldmap.geojson", verbose = F)
 pal.shp <- world.shp %>% crop(., extent(-25, 10, -5, 60)) %>% fortify
 
 
@@ -196,7 +197,7 @@ rs <- as.data.frame(ras_s) %>%
 
 dk_spr <- ggplot() + geom_tile(data = rs, aes(x= x, y = y, fill = speed)) +
   geom_polygon(data = pal.shp, aes(x = long, y = lat, group = group),
-               fill = NA, colour = "black", size = 0.2) +
+               fill = NA, colour = "black", size = 0.4) +
   coord_map("mercator", xlim = c(-25, 8), ylim = c(0, 60)) +
   geom_path(data = subset(mp, indiv == "DK" & mig == "spring"), aes(x = lon, y = lat, colour = mig, group = mig)) +
   xlab("") + ylab("") +
@@ -207,7 +208,7 @@ dk_spr <- ggplot() + geom_tile(data = rs, aes(x= x, y = y, fill = speed)) +
 
 dk_aut <- ggplot() + geom_tile(data = ra, aes(x= x, y = y, fill = speed)) +
   geom_polygon(data = pal.shp, aes(x = long, y = lat, group = group),
-               fill = NA, colour = "black", size = 0.2) +
+               fill = NA, colour = "black", size = 0.4) +
   coord_map("mercator", xlim = c(-25, 8), ylim = c(0, 60)) +
   geom_path(data = subset(mp, indiv == "DK" & mig == "autumn"), aes(x = lon, y = lat, colour = mig, group = mig)) +
   xlab("") + ylab("") +
@@ -220,14 +221,14 @@ ex_pl_ras <- dk_aut|dk_spr + plot_layout(guides = 'collect')
 ex_pl_ras
 
 
-ggsave(ex_pl_ras, file = "outputs/Example_Plot_raster_DK2.tiff", device = "tiff", dpi = 600, width = 8, height = 5)
+# ggsave(ex_pl_ras, file = "outputs/Example_Plot_raster_DK2.tiff", device = "tiff", dpi = 600, width = 8, height = 5)
 
 dk_comb <- rbind(ra, rs)
 
 dk_examp <- ggplot() + 
   geom_tile(data = dk_comb, aes(x= x, y = y, fill = speed)) +
   geom_polygon(data = pal.shp, aes(x = long, y = lat, group = group),
-               fill = NA, colour = "black", size = 0.2) +
+               fill = NA, colour = "black", size = 0.4) +
   coord_map("mercator", xlim = c(-25, 8), ylim = c(0, 60)) +
   geom_path(data = subset(mp, indiv == "DK"), aes(x = lon, y = lat, colour = mig, group = mig)) +
   xlab("") + ylab("") +
@@ -239,7 +240,7 @@ dk_examp <- ggplot() +
   facet_wrap(~mig, ncol = 2,
              labeller = as_labeller(c(autumn = 'Autumn', spring = 'Spring')))
 
-ggsave(dk_examp, file = "outputs/Example_Plot_raster_DK2_patch.tiff", device = "tiff", dpi = 600, width = 8, height = 5)
+# ggsave(dk_examp, file = "outputs/Example_Plot_raster_DK2_patch.tiff", device = "tiff", dpi = 600, width = 8, height = 5)
 
 
 
@@ -253,7 +254,7 @@ head(rs_d)
 
 w_spring <- ggplot() + geom_tile(data = rs, aes(x= x, y = y, fill = speed)) +
   geom_polygon(data = pal.shp, aes(x = long, y = lat, group = group),
-               fill = NA, colour = "black", size = 0.2) +
+               fill = NA, colour = "black", size = 0.4) +
   coord_map("mercator", xlim = c(-25, 8), ylim = c(0, 60))+
   geom_spoke(data = rs_d, aes(x = lon, y = lat, angle = dir, radius = scales::rescale(spd, c(0.5, 2))), colour = "white", 
              arrow = arrow(length = unit(.05, 'inches'))) +
@@ -278,7 +279,7 @@ ra$speed <- ifelse(ra$speed>12, 12, ra$speed)
 
 w_aut <- ggplot() + geom_tile(data = ra, aes(x= x, y = y, fill = speed)) +
   geom_polygon(data = pal.shp, aes(x = long, y = lat, group = group),
-               fill = NA, colour = "black", size = 0.2) +
+               fill = NA, colour = "black", size = 0.4) +
   coord_map("mercator", xlim = c(-25, 8), ylim = c(0, 60)) +
   geom_spoke(data = ra_d, aes(x = lon, y = lat, angle = dir, radius = scales::rescale(spd, c(0.5, 2))), colour = "white", 
              arrow = arrow(length = unit(.05, 'inches'))) +
@@ -329,7 +330,7 @@ plt_sum <- pl_t %>%
 ap <- ggplot(data = pl_t, aes(x = lon, y = lat, group = interaction(indiv, mig, loc, r_id), colour = loc)) + 
   geom_path() +
   geom_polygon(data = pal.shp, aes(x = long, y = lat, group = group),
-               fill = NA, colour = "black", size = 0.2) +
+               fill = NA, colour = "black", size = 0.4) +
   coord_map("mercator", xlim = c(-30, 35), ylim = c(0, 75)) +
   labs(colour = "Tagging location") +
   ylab("") + xlab("") +
@@ -341,7 +342,7 @@ ap <- ggplot(data = pl_t, aes(x = lon, y = lat, group = interaction(indiv, mig, 
 
 sp <- ggplot(data = plt_sum, aes(x = lon, y = lat, group = interaction(mig, loc, r_id), colour = loc)) +
   geom_polygon(data = pal.shp, aes(x = long, y = lat, group = group),
-               fill = NA, colour = "black", size = 0.2) +
+               fill = NA, colour = "black", size = 0.4) +
   coord_map("mercator", xlim = c(-30, 35), ylim = c(0, 75)) + 
   geom_path() +
   labs(colour = "Tagging location") +
@@ -352,6 +353,7 @@ sp <- ggplot(data = plt_sum, aes(x = lon, y = lat, group = interaction(mig, loc,
                                    "Cumbria", "Senegal"))
 
 cp <- ap + sp + plot_layout(guides = 'collect')
-cp
+# cp
 
 ggsave(cp, file = "outputs/Comb_Sim_Sum_pl2.tiff", device = "tiff", width = 10, height = 5)
+ggsave(sp, file = "outputs/Comb_Sim_average_tracks.tiff", device = "tiff", width = 6, height = 5)
