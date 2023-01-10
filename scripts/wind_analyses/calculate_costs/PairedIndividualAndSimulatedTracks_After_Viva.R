@@ -77,6 +77,13 @@ w_spr_ras <- list()
 fd_aut_out <- list()
 fd_spr_out <- list()
 
+# define the grid to download
+lat_range <- c(-10, 72.5)      #latitude range
+lon_range <- c(-30, 40)     #longitude range
+
+# define the altitudes to download
+pressure_levels <- c(1000, 925, 850, 700) # sea level, 779, 1502 and 3130 m a.s.l
+
 
 for(w in 1:length(inds)) {
   print(paste(inds[w], w, sep = " "))
@@ -151,14 +158,6 @@ for(w in 1:length(inds)) {
   aut_dates <- get_dates(dt_a)
   spr_dates <- get_dates(dt_s)
   
-  
-  # define the grid to download
-  lat_range <- c(-10, 72.5)      #latitude range
-  lon_range <- c(-30, 40)     #longitude range
-  
-  # define the altitudes to download
-  pressure_levels <- c(1000, 925, 850, 700) # sea level, 779, 1502 and 3130 m a.s.l
-  
   # get average wind for autumn
   rast_mean_aut <- lapply(pressure_levels, FUN = function(x) {
     
@@ -232,45 +231,25 @@ for(w in 1:length(inds)) {
   })
   
   
-  # # download wind 
-  # ww_aut <- w_t(dt_a, -30, 40, -10, 72.5)
-  # ww_spr <- w_t(dt_s, -30, 40, -10, 72.5)
-  # 
-  # # get the mean wind
-  # w_mean_aut <- wind.mean(ww_aut)
-  # w_mean_spr <- wind.mean(ww_spr)
-  # 
-  # # convert to a raster
-  # r_mean_aut <- wind2raster(w_mean_aut)
-  # r_mean_spr <- wind2raster(w_mean_spr)
-  # 
-  # # save raster
-  # w_aut_ras[[w]] <- r_mean_aut
-  # w_spr_ras[[w]] <- r_mean_spr
+  # save wind raster
+  w_aut_ras[[w]] <- rast_mean_aut$wind_rast
+  w_spr_ras[[w]] <- rast_mean_spr$wind_rast
   
   
-  fd_aut <- flow.dispersion(r_mean_aut, type="active",
-                            output="transitionLayer")
-  fd_aut <- geoCorrection(fd_aut, type="r", multpl=FALSE, scl=TRUE)
-  
-  fd_aut_out[[w]] <- fd_aut
-  
-  
-  fd_spr <- flow.dispersion(r_mean_spr, type="active",
-                            output="transitionLayer")
-  fd_spr <- geoCorrection(fd_spr, type="r", multpl=FALSE, scl=TRUE)
-  
-  fd_spr_out[[w]] <- fd_spr
-  
+  # save transition layer
+  fd_aut_out[[w]] <- rast_mean_aut$flow_dispersion
+  fd_spr_out[[w]] <- rast_mean_spr$flow_dispersion
   
 }
 
 
 ## output rasters
-# save(w_aut_ras, file = "data/wind_analyses/wind_cost_rasters/w_aut_ras_final")
-# save(w_spr_ras, file = "data/wind_analyses/wind_cost_rasters/w_spr_ras_final")
-load("data/wind_analyses/wind_cost_rasters/w_aut_ras_final")
-load("data/wind_analyses/wind_cost_rasters/w_spr_ras_final")
+dir.create("data/wind_analyses/wind_cost_rasters/", recursive = TRUE)
+
+saveRDS(w_aut_ras, file = "data/wind_analyses/wind_cost_rasters/wind_raster_autumn.rds")
+saveRDS(w_spr_ras, file = "data/wind_analyses/wind_cost_rasters/wind_raster_spring.rds")
+load("data/wind_analyses/wind_cost_rasters/wind_raster_autumn.rds")
+load("data/wind_analyses/wind_cost_rasters/wind_raster_autumn.rds")
 
 
 ## output flow dispersion files
