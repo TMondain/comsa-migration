@@ -2,8 +2,8 @@ rm(list = ls())
 
 
 ## go through each one in turn to remove superfluous packages!
-# library(tidyverse)
-# library(lubridate)
+library(tidyverse)
+library(lubridate)
 # library(rgdal)
 # library(raster)
 # library(gridExtra)
@@ -14,6 +14,9 @@ rm(list = ls())
 # library(shape)
 # library(rCAT)
 # library(gtools)
+
+library(RNCEP)
+library(terra)
 
 source('scripts/custom_functions.R')
 source("scripts/wind_analyses/calculate_costs/FunctionsSimulateSpringAut_Simple_after_viva.R")
