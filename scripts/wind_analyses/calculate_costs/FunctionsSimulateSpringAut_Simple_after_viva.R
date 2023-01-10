@@ -125,6 +125,7 @@ calc_wind_speed_dir <- function(u, v, wind_180 = FALSE) {
 
 # download wind data for specicfic time periods and pressure levels
 download_wind <- function(pressure_level, # what level to download data for
+                          date_sequence,
                           months_minmax,
                           years_minmax,
                           lat_minmax,
@@ -147,6 +148,13 @@ download_wind <- function(pressure_level, # what level to download data for
                             lon.westeast = lon_minmax,
                             return.units = TRUE,
                             reanalysis2 = TRUE)
+  
+  # keep only the dates when the birds were actually migrating
+  dates <- gsub('-', '_', as.Date(date_seq)) # convert to hms and add underscores
+  
+  # search for the date names in the names of the 3rd dimension
+  data_vwind <- data_vwind[,, grep(paste(dates, collapse = '|'), 
+                                   dimnames(data_vwind)[[3]])]
   
   # aggregate - average across all days
   agg_vwind <- NCEP.aggregate(data_vwind, 
@@ -174,6 +182,10 @@ download_wind <- function(pressure_level, # what level to download data for
                             lon.westeast = lon_minmax,
                             return.units = TRUE,
                             reanalysis2 = TRUE)
+  
+  # keep only the dates when the birds were actually migrating
+  data_uwind <- data_uwind[,, grep(paste(dates, collapse = '|'), 
+                                   dimnames(data_uwind)[[3]])]
   
   # aggregate - average across all days
   agg_uwind <- NCEP.aggregate(data_uwind, 
