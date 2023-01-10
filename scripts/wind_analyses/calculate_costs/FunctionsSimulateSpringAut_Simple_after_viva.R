@@ -1,11 +1,11 @@
 
-#############################################################
-####    Functions Autumn and spring simulating tracks    ####
-#############################################################
+###########################################
+####    Functions for wind analysis    ####
+###########################################
 
-##################################################
-###       Autumn and Spring random tracks      ###
-##################################################
+####################################################
+####       Autumn and Spring random tracks      ####
+###################################################
 
 simp_sim <- function(start, end, n, print_out = T, move = c("north", "south"), SD = 4) {
   
@@ -103,6 +103,111 @@ simp_sim <- function(start, end, n, print_out = T, move = c("north", "south"), S
   pl_aut
 }
 
+
+################################
+####     wind functions     ####
+################################
+
+# convert u and v to speed and direction in 0-360 degrees
+calc_wind_speed_dir <- function(u, v, wind_180 = FALSE) {
+  # Calculate the wind speed
+  wind_speed <- sqrt(u^2 + v^2)
+  
+  # Calculate the wind direction (in degrees)
+  wind_dir <- atan2(u, v) * 180 / pi
+  
+  # Make sure direction is on the scale 0-360
+  wind_dir <- ifelse(wind_dir<0, wind_dir + 360, wind_dir)
+  
+  return(data.frame(wind_speed, wind_dir))
+}
+
+
+# download wind data for specicfic time periods and pressure levels
+download_wind <- function(pressure_level, # what level to download data for
+                          months_minmax,
+                          years_minmax,
+                          lat_minmax,
+                          lon_minmax,
+                          aggreg_function = "mean",
+                          return_raster = TRUE) {
+  
+  require(RNCEP)
+  require(terra)
+  require(reshape2)
+  
+  print("!! Downloading v-wind data")
+  
+  # download vwnd data
+  data_vwind <- NCEP.gather(variable = "vwnd",    #name of the variable
+                            level = pressure_level, # pressure level 850hPa
+                            months.minmax = months_minmax,
+                            years.minmax = years_minmax,
+                            lat.southnorth = lat_minmax,
+                            lon.westeast = lon_minmax,
+                            return.units = TRUE,
+                            reanalysis2 = TRUE)
+  
+  # aggregate - average across all days
+  agg_vwind <- NCEP.aggregate(data_vwind, 
+                              YEARS = FALSE, 
+                              MONTHS = FALSE,
+                              DAYS = FALSE,
+                              HOURS = FALSE,
+                              fxn = aggreg_function)
+  
+  # pivot to long format
+  agg_vwind_lng <- melt(agg_vwind[,,1])
+  colnames(agg_vwind_lng) <- c("lat", "lon", "vwind")
+  
+  # reorder columns
+  agg_vwind_lng <- agg_vwind_lng[,c(2,1,3)]
+  
+  print("!! Downloading u-wind data")
+  
+  # download uwnd data
+  data_uwind <- NCEP.gather(variable = "uwnd",    #name of the variable
+                            level = pressure_level, # pressure level 850hPa
+                            months.minmax = months_minmax,
+                            years.minmax = years_minmax,
+                            lat.southnorth = lat_minmax,
+                            lon.westeast = lon_minmax,
+                            return.units = TRUE,
+                            reanalysis2 = TRUE)
+  
+  # aggregate - average across all days
+  agg_uwind <- NCEP.aggregate(data_uwind, 
+                              YEARS = FALSE, 
+                              MONTHS = FALSE,
+                              DAYS = FALSE,
+                              HOURS = FALSE,
+                              fxn = aggreg_function)
+  
+  # pivot to long format
+  agg_uwind_lng <- melt(agg_uwind[,,1])
+  colnames(agg_uwind_lng) <- c("lat", "lon", "uwind")
+  
+  # reorder columns
+  agg_uwind_lng <- agg_uwind_lng[,c(2,1,3)]
+  
+  # bind the two datasets together
+  wind_df <- cbind(agg_vwind_lng, uwind = agg_uwind_lng$uwind)
+  head(wind_df)
+  
+  print("!! calculating wind speed and direction")
+  dirsp <- calc_wind_speed_dir(u = wind_df$uwind, 
+                               v = wind_df$vwind)
+  
+  # bind speed and direction to wind
+  wind_df <- cbind(wind_df, dirsp)
+  
+  if(return_raster) {
+    wnd_rst <- rast(wind_df, type = 'xyz')
+    return(wnd_rst)
+  } else {
+    return(wind_df)
+  }
+}
 
 
 

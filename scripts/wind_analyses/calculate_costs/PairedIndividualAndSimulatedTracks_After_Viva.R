@@ -81,14 +81,18 @@ for(w in 1:length(inds)) {
   head(d_m)
   
   #### autumn
+  # get breeding departure
   dep_br <- d_m[1,4]
   
-  
+  # get winter arrival
   arr_w <- na.omit(d_m$Arrival[d_m$mig=="Winter"])[1]
   
   #### spring
+  # winter departure
   dep_w <- na.omit(d_m$Departure[d_m$mig=="Winter"])
   dep_w <- dep_w[length(dep_w)]
+  
+  # Spring arrival
   arr_br <- d_m[dim(d_m)[1],3]
   
   
@@ -108,6 +112,7 @@ for(w in 1:length(inds)) {
     dt_a <- seq(dmy_hms(dep_br), dmy_hms(arr_w)+days(5), by = "1 day") # autumn
     dt_s <- seq(dmy_hms(dep_w)-days(5), dmy_hms(arr_br), by = "1 day") # spring
     
+    # edits for certain individuals after manual checking
     if(unique(d_m$indiv) == "ET") {
       dt_s <- seq(dmy_hms(dep_w)-days(35), dmy_hms(arr_br), by = "1 day") # spring
     }
@@ -133,22 +138,78 @@ for(w in 1:length(inds)) {
     }
   }
   
+  # new code to download wind for multiple altitudes
   
-  # download wind
-  ww_aut <- w_t(dt_a, -30, 40, -10, 72.5)
-  ww_spr <- w_t(dt_s, -30, 40, -10, 72.5)
+  #### workflow
   
-  # get the mean wind
-  w_mean_aut <- wind.mean(ww_aut)
-  w_mean_spr <- wind.mean(ww_spr)
   
-  # convert to a raster
-  r_mean_aut <- wind2raster(w_mean_aut)
-  r_mean_spr <- wind2raster(w_mean_spr)
   
-  # save raster
-  w_aut_ras[[w]] <- r_mean_aut
-  w_spr_ras[[w]] <- r_mean_spr
+  #define the time sequences
+  date_seq <- dt_a
+  month_range <- c(min(month(dt_a), na.rm = TRUE),
+                   max(month(dt_a), na.rm = TRUE)) #period of months
+  year_range <- c(min(year(dt_a), na.rm = TRUE),
+                  max(year(dt_a), na.rm = TRUE)) #period of years
+
+  # define the grid to download
+  lat_range <- c(-10, 72.5)      #latitude range
+  lon_range <- c(-30, 40)     #longitude range
+  
+  # define the altitudes to download
+  pressure_levels <- c(1000, 925, 850, 700) # sea level, 779, 1502 and 3130 m a.s.l
+  
+  
+  wind_flow <- lapply(pressure_levels, FUN = function(x) {
+    
+    wnd_dl <- download_wind(pressure_level = x,
+                            date_sequence = date_seq,
+                            months_minmax = month_range,
+                            years_minmax = year_range,
+                            lat_minmax = lat_range,
+                            lon_minmax = lon_range,
+                            aggreg_function = "mean",
+                            return_raster = TRUE)
+    
+    # # plot to check
+    # plot(wnd_dl)
+    
+    # stack the rasters in right order
+    wind_terr <- c(wnd_dl$wind_dir,wnd_dl$wind_speed)
+    
+    # disaggregate to 0.5 resolution 2.5 to 0.5 = 5
+    wnd_fine <- disagg(wind_terr, fact = 5, method = 'bilinear')
+    
+    # convert to raster
+    wnd <- raster::stack(wnd_fine)
+    names(wnd) <- c("direction", "speed") # rename for use with rWind
+    
+    # back to rWind workflow to get transition probabilities between all cells
+    flow_disp <- flow.dispersion(wnd, 
+                                 type="active",
+                                 output="transitionLayer")
+    flow_disp <- gdistance::geoCorrection(flow_disp, type="r", multpl=FALSE, scl=TRUE)
+    
+    return(list(wind_rast = wnd, 
+                flow_dispersion = flow_disp))
+    
+  })
+  
+  
+  # # download wind 
+  # ww_aut <- w_t(dt_a, -30, 40, -10, 72.5)
+  # ww_spr <- w_t(dt_s, -30, 40, -10, 72.5)
+  # 
+  # # get the mean wind
+  # w_mean_aut <- wind.mean(ww_aut)
+  # w_mean_spr <- wind.mean(ww_spr)
+  # 
+  # # convert to a raster
+  # r_mean_aut <- wind2raster(w_mean_aut)
+  # r_mean_spr <- wind2raster(w_mean_spr)
+  # 
+  # # save raster
+  # w_aut_ras[[w]] <- r_mean_aut
+  # w_spr_ras[[w]] <- r_mean_spr
   
   
   fd_aut <- flow.dispersion(r_mean_aut, type="active",
