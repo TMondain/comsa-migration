@@ -16,11 +16,12 @@ library(lubridate)
 # library(gtools)
 
 library(RNCEP)
+library(rWind)
 library(terra)
 
 source('scripts/custom_functions.R')
 source("scripts/wind_analyses/calculate_costs/FunctionsSimulateSpringAut_Simple_after_viva.R")
-source("scripts/wind_analyses/calculate_costs/FixedWind_dl_2.r")
+# source("scripts/wind_analyses/calculate_costs/FixedWind_dl_2.r")
 
 
 
@@ -146,15 +147,11 @@ for(w in 1:length(inds)) {
   
   #### workflow
   
+  #define the time sequences, dates, months, years
+  aut_dates <- get_dates(dt_a)
+  spr_dates <- get_dates(dt_s)
   
   
-  #define the time sequences
-  date_seq <- dt_a
-  month_range <- c(min(month(dt_a), na.rm = TRUE),
-                   max(month(dt_a), na.rm = TRUE)) #period of months
-  year_range <- c(min(year(dt_a), na.rm = TRUE),
-                  max(year(dt_a), na.rm = TRUE)) #period of years
-
   # define the grid to download
   lat_range <- c(-10, 72.5)      #latitude range
   lon_range <- c(-30, 40)     #longitude range
@@ -162,13 +159,49 @@ for(w in 1:length(inds)) {
   # define the altitudes to download
   pressure_levels <- c(1000, 925, 850, 700) # sea level, 779, 1502 and 3130 m a.s.l
   
-  
-  wind_flow <- lapply(pressure_levels, FUN = function(x) {
+  # get average wind for autumn
+  rast_mean_aut <- lapply(pressure_levels, FUN = function(x) {
     
     wnd_dl <- download_wind(pressure_level = x,
-                            date_sequence = date_seq,
-                            months_minmax = month_range,
-                            years_minmax = year_range,
+                            date_sequence = aut_dates$date_seq,
+                            months_minmax = aut_dates$month_range,
+                            years_minmax = aut_dates$year_range,
+                            lat_minmax = lat_range,
+                            lon_minmax = lon_range,
+                            aggreg_function = "mean",
+                            return_raster = TRUE)
+    
+    # # plot to check
+    # plot(wnd_dl)
+    
+    # stack the rasters in right order
+    wind_terr <- c(wnd_dl$wind_dir,wnd_dl$wind_speed)
+    
+    # disaggregate to 0.5 resolution 2.5 to 0.5 = 5
+    wnd_fine <- disagg(wind_terr, fact = 5, method = 'bilinear')
+    
+    # convert to raster
+    wnd <- raster::stack(wnd_fine)
+    names(wnd) <- c("direction", "speed") # rename for use with rWind
+    
+    # back to rWind workflow to get transition probabilities between all cells
+    flow_disp <- flow.dispersion(wnd, 
+                                 type="active",
+                                 output="transitionLayer")
+    flow_disp <- gdistance::geoCorrection(flow_disp, type="r", multpl=FALSE, scl=TRUE)
+    
+    return(list(wind_rast = wnd, 
+                flow_dispersion = flow_disp))
+    
+  })
+  
+  # get average wind for spring
+  rast_mean_spr <- lapply(pressure_levels, FUN = function(x) {
+    
+    wnd_dl <- download_wind(pressure_level = x,
+                            date_sequence = spr_dates$date_seq,
+                            months_minmax = spr_dates$month_range,
+                            years_minmax = spr_dates$year_range,
                             lat_minmax = lat_range,
                             lon_minmax = lon_range,
                             aggreg_function = "mean",

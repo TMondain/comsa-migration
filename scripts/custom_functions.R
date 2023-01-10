@@ -37,3 +37,19 @@ ma <- function(arr, n=15){
 mround <- function(x,base){
   base*round(x/base)
 }
+
+# get day, month and year sequences
+
+get_dates <- function(date_sequence) {
+  
+  date_seq <- date_sequence
+  month_range <- c(min(month(date_sequence), na.rm = TRUE),
+                   max(month(date_sequence), na.rm = TRUE)) #period of months
+  year_range <- c(min(year(date_sequence), na.rm = TRUE),
+                  max(year(date_sequence), na.rm = TRUE)) #period of years
+  
+  return(list(date_seq = date_seq,
+              month_range = month_range,
+              year_range = year_range))
+  
+}
