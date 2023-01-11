@@ -572,6 +572,7 @@ for(i in 1:length(i_r)){
       ## calculate cost of relocations  
       if(migs[m] == "autumn") {
         
+        ### real birds
         # calculate dispersal cost for autumn relocation
         # loop through all the different altitudes and pick the minimum cost
         dispersal_costs_aut <- 
@@ -595,10 +596,14 @@ for(i in 1:length(i_r)){
                                               cost = cd_aut,
                                               all_costs = paste(round(dispersal_costs_aut, 1), collapse = '_')))
         
-        
-        # cd_aut <- costDistance(fd_aut, SpatialPoints(crds[x-1,]), SpatialPoints(crds[x,]))
-        
         cst_ind_aut[[x]] <- cd_aut
+        
+        # ### geolocation error calculation - need to do this 100 times?
+        # cd_aut_sim <- costDistance(fd_aut[which.min(dispersal_costs_aut)], 
+        #                            SpatialPoints(crds_sim[x_s-1,c("lon", "lat")]), 
+        #                            SpatialPoints(crds_sim[x_s,c("lon", "lat")]))
+        # 
+        # cst_track_aut_sim[[x_s]] <- cd_aut_sim
         
       }
       
@@ -748,7 +753,7 @@ for(i in 1:length(i_r)){
         
         # first need to find the altitude that the real bird flew at
         # use pressure level df
-        
+        # if the true coords are the same then assign the cost to = 0
         cd_aut_sim <- costDistance(fd_aut, SpatialPoints(crds_sim[x_s-1,3:4]), SpatialPoints(crds_sim[x_s,3:4]))
         
         cst_track_aut_sim[[x_s]] <- cd_aut_sim
