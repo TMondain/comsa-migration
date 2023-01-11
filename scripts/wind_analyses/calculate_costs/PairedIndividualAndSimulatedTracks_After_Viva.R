@@ -3,7 +3,8 @@ rm(list = ls())
 
 ## go through each one in turn to remove superfluous packages!
 library(tidyverse)
-library(lubridate)
+library(lubridate) # dates
+library(gtools) # for mixedsort() function
 # library(rgdal)
 # library(raster)
 # library(gridExtra)
@@ -13,7 +14,6 @@ library(lubridate)
 # library(gdistance)
 # library(shape)
 # library(rCAT)
-# library(gtools)
 
 library(RNCEP)
 library(rWind)
@@ -65,8 +65,8 @@ mp$mig[mp$indiv=='Bird7'] <- "autumn"
 ########## get weather data for each population separately
 ## store as different objects
 
+# names of birds
 inds <- unique(mp$indiv)
-
 
 #output rasters
 w_aut_ras <- list()
@@ -249,6 +249,12 @@ for(w in 1:length(inds)) {
   
 }
 
+# name the raster layers names of the individuals
+names(w_aut_ras) <- inds
+names(w_spr_ras) <- inds
+
+names(fd_aut_out) <- inds
+names(fd_spr_out) <- inds
 
 ## output rasters
 dir.create("data/wind_analyses/wind_cost_rasters/", recursive = TRUE)
@@ -256,7 +262,7 @@ dir.create("data/wind_analyses/wind_cost_rasters/", recursive = TRUE)
 # saveRDS(w_aut_ras, file = "data/wind_analyses/wind_cost_rasters/wind_raster_autumn.rds")
 # saveRDS(w_spr_ras, file = "data/wind_analyses/wind_cost_rasters/wind_raster_spring.rds")
 w_aut_ras <- readRDS("data/wind_analyses/wind_cost_rasters/wind_raster_autumn.rds")
-w_spr_ras <- load("data/wind_analyses/wind_cost_rasters/wind_raster_autumn.rds")
+w_spr_ras <- readRDS("data/wind_analyses/wind_cost_rasters/wind_raster_autumn.rds")
 
 
 ## output flow dispersion files
@@ -354,7 +360,7 @@ sim_t <- readRDS("data/wind_analyses/simulated_birds_n100.rds")
 
 
 ##########################################################
-####     Step 4: Get cost of real bird migrations     ####
+####     Step 3: Get cost of real bird migrations     ####
 ##########################################################
 
 # wintering grounds averaged for birds that showed weird mid-winter movements
@@ -363,11 +369,14 @@ ms <- read_csv("data/movement_data/Schedule_AllIndivs_RawWint.csv")
 # positions of all individuals
 mp <- read_csv("data/movement_data/Positions_AllIndivs.csv")
 
-# only sedbergh birds
-# mp <- subset(mp, loc == "Sedbergh")
+# check the individuals
+unique(mp$indiv)
+
+# clean up some minor errors in the datasets
 mp <- mp %>% mutate(mig = gsub(pattern = "Spring", replacement = "spring", x = mig),
                     mig = gsub(pattern = "Autumn", replacement = "autumn", x = mig))
-unique(mp$indiv)
+
+mp$mig[mp$indiv=='Bird7'] <- "autumn"
 
 # name the senegalese wintering grounds
 ms$mig[ms$loc == "Senegal" & ms$lat < 25] <- "Winter" 
@@ -375,13 +384,10 @@ ms$mig[ms$loc == "Senegal" & ms$lat < 25] <- "Winter"
 # tidy up positions dataset
 # remove equinox
 mp <- mp %>% 
-  # subset((jd <256 | jd > 276) & (jd < 69 | jd > 89)) %>% # removed because I account for equinoxes lower down in the for loop based on each individual's mig sched  
   na.omit %>% 
   group_by(indiv) %>% 
   mutate(lat = c(smooth(lat, twiceit = T)),
          lon = c(smooth(lon, twiceit = T)))
-
-mp$mig[mp$indiv=='Bird7'] <- "autumn"
 
 
 # # This code makes a sequence for each senegalese bird from the breeding grounds
@@ -482,6 +488,9 @@ for(i in 1:length(i_r)){
   mig_pos[[i]] <- ind_pos_nwint 
   
   # get the corresponding raster for each real individual
+  # check that it's the right individual
+  if(i_r[i]!=names(fd_aut_out)[i]) stop('!! raster order does not match individual order')
+  
   fd_aut <- fd_aut_out[[i]]
   fd_spr <- fd_spr_out[[i]]
   
@@ -528,7 +537,6 @@ for(i in 1:length(i_r)){
     #   geom_line(data = crds, aes(x = lon, y = lat, colour = 'real'))
     
     sim_inds <- unique(locs_sim$name) %>% mixedsort()
-    
     
     
     ##################################
