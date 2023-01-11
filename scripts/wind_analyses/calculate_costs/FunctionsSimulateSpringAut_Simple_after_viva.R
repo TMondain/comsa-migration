@@ -137,6 +137,8 @@ download_wind <- function(pressure_level, # what level to download data for
   require(terra)
   require(reshape2)
   
+  print(pressure_level)
+  
   print("!! Downloading v-wind data")
   
   # download vwnd data
@@ -150,7 +152,7 @@ download_wind <- function(pressure_level, # what level to download data for
                             reanalysis2 = TRUE)
   
   # keep only the dates when the birds were actually migrating
-  dates <- gsub('-', '_', as.Date(date_seq)) # convert to hms and add underscores
+  dates <- gsub('-', '_', as.Date(date_sequence)) # convert to hms and add underscores
   
   # search for the date names in the names of the 3rd dimension
   data_vwind <- data_vwind[,, grep(paste(dates, collapse = '|'), 

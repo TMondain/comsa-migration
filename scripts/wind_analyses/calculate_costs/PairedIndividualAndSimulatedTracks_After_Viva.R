@@ -189,7 +189,7 @@ for(w in 1:length(inds)) {
                                  output="transitionLayer")
     flow_disp <- gdistance::geoCorrection(flow_disp, type="r", multpl=FALSE, scl=TRUE)
     
-    return(list(wind_rast = wnd, 
+    return(list(wind_rast = wnd,
                 flow_dispersion = flow_disp))
     
   })
@@ -230,15 +230,22 @@ for(w in 1:length(inds)) {
     
   })
   
+  names(rast_mean_aut) <- pressure_levels
+  names(rast_mean_spr) <- pressure_levels
   
   # save wind raster
-  w_aut_ras[[w]] <- rast_mean_aut$wind_rast
-  w_spr_ras[[w]] <- rast_mean_spr$wind_rast
+  w_aut_ras[[w]] <- lapply(1:length(rast_mean_aut), function(x) rast_mean_aut[[x]]$wind_rast)
+  w_spr_ras[[w]] <- lapply(1:length(rast_mean_spr), function(x) rast_mean_spr[[x]]$wind_rast)
   
+  names(w_aut_ras[[w]]) <- pressure_levels
+  names(w_spr_ras[[w]]) <- pressure_levels
   
   # save transition layer
-  fd_aut_out[[w]] <- rast_mean_aut$flow_dispersion
-  fd_spr_out[[w]] <- rast_mean_spr$flow_dispersion
+  fd_aut_out[[w]] <- lapply(1:length(rast_mean_aut), function(x) rast_mean_aut[[x]]$flow_dispersion)
+  fd_spr_out[[w]] <- lapply(1:length(rast_mean_spr), function(x) rast_mean_spr[[x]]$flow_dispersion)
+  
+  names(fd_aut_out[[w]]) <- pressure_levels
+  names(fd_spr_out[[w]]) <- pressure_levels
   
 }
 
@@ -246,17 +253,17 @@ for(w in 1:length(inds)) {
 ## output rasters
 dir.create("data/wind_analyses/wind_cost_rasters/", recursive = TRUE)
 
-saveRDS(w_aut_ras, file = "data/wind_analyses/wind_cost_rasters/wind_raster_autumn.rds")
-saveRDS(w_spr_ras, file = "data/wind_analyses/wind_cost_rasters/wind_raster_spring.rds")
-load("data/wind_analyses/wind_cost_rasters/wind_raster_autumn.rds")
-load("data/wind_analyses/wind_cost_rasters/wind_raster_autumn.rds")
+# saveRDS(w_aut_ras, file = "data/wind_analyses/wind_cost_rasters/wind_raster_autumn.rds")
+# saveRDS(w_spr_ras, file = "data/wind_analyses/wind_cost_rasters/wind_raster_spring.rds")
+w_aut_ras <- readRDS("data/wind_analyses/wind_cost_rasters/wind_raster_autumn.rds")
+w_spr_ras <- load("data/wind_analyses/wind_cost_rasters/wind_raster_autumn.rds")
 
 
 ## output flow dispersion files
-# save(fd_aut_out, file = "data/wind_analyses/wind_cost_rasters/fd_aut_out_final")
-# save(fd_spr_out, file = "data/wind_analyses/wind_cost_rasters/fd_spr_out_final")
-load("data/wind_analyses/wind_cost_rasters/fd_aut_out_final")
-load("data/wind_analyses/wind_cost_rasters/fd_spr_out_final")
+# saveRDS(fd_aut_out, file = "data/wind_analyses/wind_cost_rasters/flow_dispersion_autumn.rds")
+# saveRDS(fd_spr_out, file = "data/wind_analyses/wind_cost_rasters/flow_dispersion_spring.rds")
+fd_aut_out <- readRDS("data/wind_analyses/wind_cost_rasters/flow_dispersion_autumn.rds")
+fd_spr_out <- readRDS("data/wind_analyses/wind_cost_rasters/flow_dispersion_spring.rds")
 
 ## In the calculation of costs, need to ignore birds in spring that didn't return to 
 ## the breeding grounds
@@ -341,9 +348,9 @@ for(s in 1:length(inds)) {
 sim_t <- do.call("rbind", out_si)
 head(sim_t)
 
-## output simulated bird tracks
-# save(sim_t, file = "data/wind_analyses/simulated_bird_tracks/simulated_birds_100_finalV2")
-load("data/wind_analyses/simulated_bird_tracks/simulated_birds_100_finalV2")
+# ## output simulated bird tracks
+# saveRDS(sim_t, file = "data/wind_analyses/simulated_birds_n100.rds")
+sim_t <- readRDS("data/wind_analyses/simulated_birds_n100.rds")
 
 
 ###########################################################
