@@ -5,6 +5,7 @@ rm(list = ls())
 library(tidyverse)
 library(lubridate) # dates
 library(gtools) # for mixedsort() function
+library(sp) # for spatialpoints()
 # library(rgdal)
 # library(raster)
 # library(gridExtra)
@@ -363,6 +364,9 @@ sim_t <- readRDS("data/wind_analyses/simulated_birds_n100.rds")
 ####     Step 3: Get cost of real bird migrations     ####
 ##########################################################
 
+# this section gets the cost of the real bird migrations and the
+# cost associated with geolocation error
+
 # wintering grounds averaged for birds that showed weird mid-winter movements
 ms <- read_csv("data/movement_data/Schedule_AllIndivs_RawWint.csv")
 
@@ -428,12 +432,19 @@ mp <- mp %>%
 all_out <- list()
 all_out_sim <- list()
 
+# pressure levlels data frame to store everything relevant to real birds
+pressure_level_df <- data.frame()
+
 i_r <- unique(ms$indiv)
 mig_pos <- list()
 
 for(i in 1:length(i_r)){
   
   print(i_r[i])
+  
+  ############################################
+  ####    Cost of real bird migrations    ####
+  ############################################
   
   # subset main position df by indiv
   ind_pos <- subset(mp, indiv == i_r[i]) %>% mutate(tm = ymd(tm))
@@ -498,10 +509,7 @@ for(i in 1:length(i_r)){
   cost_out <- list()
   cost_out_sim <- list()
   
-  ##########################
-  ##  For each migration  ##
-  ##########################
-  
+  # loop through migrations
   migs <- unique(ind_pos_nwint$mig)
   
   for(m in 1:length(migs)) {
@@ -512,136 +520,8 @@ for(i in 1:length(i_r)){
     crds <- na.omit(i1[,6:7])
     # str(crds)
     
-    ##############
-    ####    Generate simulated 'real' birds dataframe
     
-    # generate 100 individuals for each real bird
-    # tracks are the same length as the real bird tracks
-    # with lon and lat sampled from a normal distribution to 
-    # simulate geolocation error.
-    # Error is ~ 250km for lat and ~100 ish for longitude
-    # 1 degree =~111km, so sample with 1 stdev for lat and 0.5 stdevs for longitude
-    # This is generated for each real bird and each migration separately
-    lon_sim <- data.frame(replicate(100,rnorm(length(crds$lon), crds$lon, 0.5))) %>% rownames_to_column()
-    lat_sim <- data.frame(replicate(100,rnorm(length(crds$lat), crds$lat, 1))) %>% rownames_to_column()
-    
-    lons_t <- lon_sim %>% pivot_longer(cols = 2:101, values_to = "lon") %>% arrange(name)
-    lats_t <- lat_sim %>% pivot_longer(cols = 2:101, values_to = "lat") %>% arrange(name)
-    
-    locs_sim <- cbind(lons_t, lats_t[,3]) %>% group_by(name) %>% 
-      mutate(lon = c(smooth(lon, twiceit = T)),
-             lat = c(smooth(lat, twiceit = T)))
-    head(locs_sim)
-    
-    # ggplot(locs_sim, aes(x = lon, y = lat)) + geom_line()# +
-    #   geom_line(data = crds, aes(x = lon, y = lat, colour = 'real'))
-    
-    sim_inds <- unique(locs_sim$name) %>% mixedsort()
-    
-    
-    ##################################
-    ####    Cost of simulated geolocator error bird tracks
-    
-    # output list of 
-    cost_individual_sim <- list()
-    
-    for(s in 1:length(sim_inds)){
-      print(sim_inds[s])
-      
-      cst_track_aut_sim <- list()
-      cst_track_spr_sim <- list()
-      
-      crds_sim <- subset(locs_sim, name == sim_inds[s])
-      
-      # get the cost between coord x and x - 1 
-      for(x_s in 2:dim(crds_sim)[1]) {
-        
-        
-        if(crds_sim[x_s,4] > 70){
-          print(paste("latitude north of raster extext", sim_inds[s], migs[m], mround(crds_sim[x_s,4],1)))
-          
-          next
-        }
-        
-        if(crds_sim[x_s-1,4] > 70){
-          print(paste("latitude north of raster extext", sim_inds[s], migs[m], mround(crds_sim[x_s-1,4],1)))
-          
-          next
-        }
-        
-        
-        if(crds_sim[x_s,4] < (-10)) {
-          print(paste("latitude south of raster extext", sim_inds[s], migs[m], mround(crds_sim[x_s,4],1)))
-          
-          next
-        }
-        
-        if(crds_sim[x_s-1,4] < (-10)) {
-          print(paste("latitude south of raster extext", sim_inds[s], migs[m], mround(crds_sim[x_s-1,4],1)))
-          
-          next
-        }
-        
-        if(crds_sim[x_s,3]<=(-30)) {
-          print(paste("longitude west of raster extent", sim_inds[s], migs[m], mround(crds_sim[x_s,3],1)))
-          
-          next
-        }
-        
-        if(crds_sim[x_s-1,3]<=(-30)) {
-          print(paste("longitude west of raster extent", sim_inds[i], migs[m], mround(crds_sim[x_s-1,3],1)))
-          
-          next
-        }
-        
-        
-        #################################################
-        ##   COST of the geolocation error simulation  ##
-        ##############
-        if(migs[m] == "autumn") {
-          
-          cd_aut_sim <- costDistance(fd_aut, SpatialPoints(crds_sim[x_s-1,3:4]), SpatialPoints(crds_sim[x_s,3:4]))
-          
-          cst_track_aut_sim[[x_s]] <- cd_aut_sim
-          
-        }
-        
-        if(migs[m] == "spring") {
-          cd_spr_sim <- costDistance(fd_spr, SpatialPoints(crds_sim[x_s-1,3:4]), SpatialPoints(crds_sim[x_s,3:4]))
-          
-          cst_track_spr_sim[[x_s]] <- cd_spr_sim
-        }
-        
-        
-      }
-      
-      if(migs[m] == "autumn") {
-        t_aut <- do.call("c",cst_track_aut_sim)
-        t_aut <- t_aut[is.finite(t_aut)]
-        
-        # save the DFs for each individual within each migration
-        cost_individual_sim[[s]] <- data.frame(cost = sum(na.omit(t_aut)), r_in = i_r[i], indiv = sim_inds[s], 
-                                               loc = unique(i1$loc), mig = migs[m], c_ind = sum(na.omit(t_aut))/(dim(crds)[1]))
-        
-      }
-      
-      if(migs[m] == "spring") {
-        t_spr <- do.call("c",cst_track_spr_sim)
-        t_spr <- t_spr[is.finite(t_spr)]
-        
-        # save the DFs for each individual within each migration
-        cost_individual_sim[[s]] <- data.frame(cost = sum(na.omit(t_spr)), r_in = i_r[i], indiv = sim_inds[s], 
-                                               loc = unique(i1$loc), mig = migs[m], c_ind = sum(na.omit(t_spr))/(dim(crds)[1]))
-        
-      }
-      
-    }
-    
-    # save the two migrations of the bird
-    cost_out_sim[[m]] <- do.call("rbind", cost_individual_sim)
-    
-    ##############################
-    #### for real bird tracks
+    # for real bird tracks
     cst_ind_aut <- list()
     cst_ind_spr <- list()
     
@@ -689,19 +569,61 @@ for(i in 1:length(i_r)){
       }
       
       
-      ##############
-      ##   COST of real birds  ##
-      ##############
+      ## calculate cost of relocations  
       if(migs[m] == "autumn") {
-        # real
-        cd_aut <- costDistance(fd_aut, SpatialPoints(crds[x-1,]), SpatialPoints(crds[x,]))
+        
+        # calculate dispersal cost for autumn relocation
+        # loop through all the different altitudes and pick the minimum cost
+        dispersal_costs_aut <- 
+          sapply(1:length(fd_aut), FUN = function(i){ 
+            gdistance::costDistance(fd_aut[[i]], 
+                                    fromCoords = SpatialPoints(crds[x-1,]), 
+                                    toCoords = SpatialPoints(crds[x,]))
+          })
+            
+        # get the relocation with the smallest cost
+        cd_aut <- min(dispersal_costs_aut)
+        
+        pressure_level_df <- rbind(pressure_level_df,
+                                   data.frame(indiv = i_r[i],
+                                              migration = migs[m],
+                                              crd_pos = x,
+                                              lon = crds[x,1],
+                                              lat = crds[x,2],
+                                              pressure_index = which.min(dispersal_costs_aut),
+                                              pressure_level = pressure_levels[which.min(dispersal_costs_aut)],
+                                              cost = cd_aut,
+                                              all_costs = paste(round(dispersal_costs_aut, 1), collapse = '_')))
+        
+        
+        # cd_aut <- costDistance(fd_aut, SpatialPoints(crds[x-1,]), SpatialPoints(crds[x,]))
         
         cst_ind_aut[[x]] <- cd_aut
         
       }
       
       if(migs[m] == "spring") {
-        cd_spr <- costDistance(fd_spr, SpatialPoints(crds[x-1,]), SpatialPoints(crds[x,]))
+       
+        dispersal_costs_spr <- 
+          sapply(1:length(fd_spr), FUN = function(i){ 
+            gdistance::costDistance(fd_spr[[i]], 
+                                    fromCoords = SpatialPoints(crds[x-1,]), 
+                                    toCoords = SpatialPoints(crds[x,]))
+          })
+        
+        # get the relocation with the smallest cost
+        cd_spr <- min(dispersal_costs_spr)
+        
+        pressure_level_df <- rbind(pressure_level_df,
+                                   data.frame(indiv = i_r[i],
+                                              migration = migs[m],
+                                              crd_pos = x,
+                                              lon = crds[x,1],
+                                              lat = crds[x,2],
+                                              pressure_index = which.min(dispersal_costs_spr),
+                                              pressure_level = pressure_levels[which.min(dispersal_costs_spr)],
+                                              cost = cd_spr,
+                                              all_costs = paste(round(dispersal_costs_spr, 1), collapse = '_')))
         
         cst_ind_spr[[x]] <- cd_spr
       }
@@ -730,8 +652,147 @@ for(i in 1:length(i_r)){
     
   }
   
-  all_out[[i]] <- do.call("rbind", cost_out)
-  all_out_sim[[i]] <- do.call("rbind", cost_out_sim)
+  
+  #################################
+  ####    Geolocation error    ####
+  #################################
+  
+  ##############
+  ####    Generate simulated 'real' birds dataframe
+  
+  # generate 100 individuals for each real bird
+  # tracks are the same length as the real bird tracks
+  # with lon and lat sampled from a normal distribution to 
+  # simulate geolocation error.
+  # Error is ~ 250km for lat and ~100 ish for longitude
+  # 1 degree =~111km, so sample with 1 stdev for lat and 0.5 stdevs for longitude
+  # This is generated for each real bird and each migration separately
+  lon_sim <- data.frame(replicate(100,rnorm(length(crds$lon), crds$lon, 0.5))) %>% rownames_to_column()
+  lat_sim <- data.frame(replicate(100,rnorm(length(crds$lat), crds$lat, 1))) %>% rownames_to_column()
+  
+  lons_t <- lon_sim %>% pivot_longer(cols = 2:101, values_to = "lon") %>% arrange(name)
+  lats_t <- lat_sim %>% pivot_longer(cols = 2:101, values_to = "lat") %>% arrange(name)
+  
+  locs_sim <- cbind(lons_t, lats_t[,3]) %>% group_by(name) %>% 
+    mutate(lon = c(smooth(lon, twiceit = T)),
+           lat = c(smooth(lat, twiceit = T)))
+  head(locs_sim)
+  
+  # ggplot(locs_sim, aes(x = lon, y = lat)) + geom_line()# +
+  #   geom_line(data = crds, aes(x = lon, y = lat, colour = 'real'))
+  
+  sim_inds <- unique(locs_sim$name) %>% mixedsort()
+  
+  
+  ######################################################
+  ####    Geolocation error start of calculation    ####
+  ######################################################
+  
+  # output list of 
+  cost_individual_sim <- list()
+  
+  for(s in 1:length(sim_inds)){
+    print(sim_inds[s])
+    
+    cst_track_aut_sim <- list()
+    cst_track_spr_sim <- list()
+    
+    crds_sim <- subset(locs_sim, name == sim_inds[s])
+    
+    # get the cost between coord x and x - 1 
+    for(x_s in 2:dim(crds_sim)[1]) {
+      
+      
+      if(crds_sim[x_s,4] > 70){
+        print(paste("latitude north of raster extext", sim_inds[s], migs[m], mround(crds_sim[x_s,4],1)))
+        
+        next
+      }
+      
+      if(crds_sim[x_s-1,4] > 70){
+        print(paste("latitude north of raster extext", sim_inds[s], migs[m], mround(crds_sim[x_s-1,4],1)))
+        
+        next
+      }
+      
+      
+      if(crds_sim[x_s,4] < (-10)) {
+        print(paste("latitude south of raster extext", sim_inds[s], migs[m], mround(crds_sim[x_s,4],1)))
+        
+        next
+      }
+      
+      if(crds_sim[x_s-1,4] < (-10)) {
+        print(paste("latitude south of raster extext", sim_inds[s], migs[m], mround(crds_sim[x_s-1,4],1)))
+        
+        next
+      }
+      
+      if(crds_sim[x_s,3]<=(-30)) {
+        print(paste("longitude west of raster extent", sim_inds[s], migs[m], mround(crds_sim[x_s,3],1)))
+        
+        next
+      }
+      
+      if(crds_sim[x_s-1,3]<=(-30)) {
+        print(paste("longitude west of raster extent", sim_inds[i], migs[m], mround(crds_sim[x_s-1,3],1)))
+        
+        next
+      }
+      
+      
+      #################################################
+      ##   Cost of the geolocation error simulation  ##
+      #################################################
+      if(migs[m] == "autumn") {
+        
+        # first need to find the altitude that the real bird flew at
+        # use pressure level df
+        
+        cd_aut_sim <- costDistance(fd_aut, SpatialPoints(crds_sim[x_s-1,3:4]), SpatialPoints(crds_sim[x_s,3:4]))
+        
+        cst_track_aut_sim[[x_s]] <- cd_aut_sim
+        
+      }
+      
+      if(migs[m] == "spring") {
+        cd_spr_sim <- costDistance(fd_spr, SpatialPoints(crds_sim[x_s-1,3:4]), SpatialPoints(crds_sim[x_s,3:4]))
+        
+        cst_track_spr_sim[[x_s]] <- cd_spr_sim
+      }
+      
+      
+    }
+    
+    if(migs[m] == "autumn") {
+      t_aut <- do.call("c",cst_track_aut_sim)
+      t_aut <- t_aut[is.finite(t_aut)]
+      
+      # save the DFs for each individual within each migration
+      cost_individual_sim[[s]] <- data.frame(cost = sum(na.omit(t_aut)), r_in = i_r[i], indiv = sim_inds[s], 
+                                             loc = unique(i1$loc), mig = migs[m], c_ind = sum(na.omit(t_aut))/(dim(crds)[1]))
+      
+    }
+    
+    if(migs[m] == "spring") {
+      t_spr <- do.call("c",cst_track_spr_sim)
+      t_spr <- t_spr[is.finite(t_spr)]
+      
+      # save the DFs for each individual within each migration
+      cost_individual_sim[[s]] <- data.frame(cost = sum(na.omit(t_spr)), r_in = i_r[i], indiv = sim_inds[s], 
+                                             loc = unique(i1$loc), mig = migs[m], c_ind = sum(na.omit(t_spr))/(dim(crds)[1]))
+      
+    }
+    
+  }
+  
+  # save the two migrations of the bird
+  cost_out_sim[[m]] <- do.call("rbind", cost_individual_sim)
+  
+  
+  
+  all_out[[i]] <- do.call("rbind", cost_out) # real birds
+  all_out_sim[[i]] <- do.call("rbind", cost_out_sim) # simulated birds
 }
 
 # Cost of the tracks of real birds
