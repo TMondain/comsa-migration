@@ -353,127 +353,6 @@ head(sim_t)
 sim_t <- readRDS("data/wind_analyses/simulated_birds_n100.rds")
 
 
-###########################################################
-####     Step 3: Get cost of simulated bird tracks     ####
-###########################################################
-
-# each track's cost is simulated relative to the conditions
-# the real bird experienced during it migration
-head(sim_t)
-
-# smooth the tracks of simulated birds to be like
-# real birds
-sim_t <- sim_t %>% group_by(indiv, mig, r_id) %>% 
-  mutate(lon = smooth(lon, twiceit = T),
-         lat = smooth(lat, twiceit = T))
-
-r_birds <- unique(mp$indiv)
-
-r_sim_out <- list()
-
-# start with getting the rasters from real birds
-for(r in 1:length(r_birds)){
-  print(r_birds[r])
-  
-  # get the corresponding raster for each real individual
-  fd_aut <- fd_aut_out[[r]]
-  fd_spr <- fd_spr_out[[r]]
-  
-  # get the simulated tracks corresponding to each real individual 
-  sim_t_r <- subset(sim_t, r_id == r_birds[r])
-  
-  cost_out <- list()
-  
-  # for each simulated individual in the dataset
-  for(i in 1:length(unique(sim_t_r$indiv))) {
-    print(i)
-    
-    # get simulated individual 
-    sim_i <- subset(sim_t_r, indiv == i)
-    
-    head(sim_i)
-    
-    cst_ind_aut <- list()
-    cst_ind_spr <- list()
-    
-    # to get the cost for each migration
-    migs <- c("autumn", "spring")
-    
-    out_m_aut <- list()
-    out_m_spr <- list()
-    
-    for(m in migs){
-      print(m)
-      sim_i_m <- subset(sim_i, mig == m)
-      
-      for(x in 2:length(sim_i_m$lat)) {
-        
-        # print(x)
-        
-        if(unique(sim_i_m$mig) == "autumn") {
-          crds <- sim_i_m[,1:2]
-          cd_aut <- costDistance(fd_aut, SpatialPoints(crds[x-1,]), SpatialPoints(crds[x,]))
-          cst_ind_aut[[x]] <- cd_aut
-        }
-        
-        
-        if(unique(sim_i_m$mig) == "spring") {
-          crds <- na.omit(sim_i_m[,1:2])
-          cd_spr <- costDistance(fd_aut, SpatialPoints(crds[x-1,]), SpatialPoints(crds[x,]))
-          cst_ind_spr[[x]] <- cd_spr
-        }
-        
-        
-      }
-      
-      t_aut <- do.call("c",cst_ind_aut)
-      
-      t_spr <- do.call("c",cst_ind_spr)
-      
-      out_m_aut[[m]] <- t_aut
-      out_m_spr[[m]] <- t_spr
-      
-    }
-    
-    ca <- do.call("c", out_m_aut)
-    cs <- do.call("c", out_m_spr)
-    
-    df <- data.frame(cost_aut = sum(na.omit(ca[is.finite(ca)])), 
-                     cost_aut_ind = sum(na.omit(ca[is.finite(ca)]))/length(sim_i_m$lon), 
-                     cost_spr = sum(na.omit(cs[is.finite(cs)])), 
-                     cost_spr_ind = sum(na.omit(cs[is.finite(cs)]))/length(sim_i_m$lon),
-                     sim_indiv = i, r_id = r_birds[r], loc = unique(sim_i_m$loc))
-    
-    cost_out[[i]] <- df
-    
-  }
-  
-  
-  c_o <- do.call("rbind", cost_out)
-  
-  r_sim_out[[r]] <- c_o
-  
-}
-
-# save(r_sim_out, file = "data/wind_analyses/flight_costs/cost_out_sim_100inds_finalV2")
-load("data/wind_analyses/flight_costs/cost_out_sim_100inds_finalV2")
-
-# bind together
-s_out <- do.call("rbind", r_sim_out)
-head(s_out)
-
-s<-s_out
-colnames(s) <- c("cost_aut_rl", "cost_aut_ind", "cost_spr_rl", "cost_spr_ind", "sim_indiv", "r_id",      "loc")
-
-# get raw cost into long format 
-s_raw_c <- pivot_longer(s_out, cols = c("cost_aut", "cost_spr"), names_to = "mig", values_to = "cost")
-
-# get cost index into long format
-s_p <- pivot_longer(s_out, cols = c("cost_aut_ind", "cost_spr_ind"), names_to = "mig", values_to = "cost_ind")
-
-
-
-
 ##########################################################
 ####     Step 4: Get cost of real bird migrations     ####
 ##########################################################
@@ -853,6 +732,131 @@ head(cst_mig)
 
 # write.csv(cst_mig, file = "data/wind_analyses/flight_costs/cost_mig_individuals_final.csv")
 cst_mig <- read.csv("data/wind_analyses/flight_costs/cost_mig_individuals_final.csv")[,-1]
+
+
+
+
+
+###########################################################
+####     Step 3: Get cost of simulated bird tracks     ####
+###########################################################
+
+# each track's cost is simulated relative to the conditions
+# the real bird experienced during it migration
+head(sim_t)
+
+# smooth the tracks of simulated birds to be like
+# real birds
+sim_t <- sim_t %>% group_by(indiv, mig, r_id) %>% 
+  mutate(lon = smooth(lon, twiceit = T),
+         lat = smooth(lat, twiceit = T))
+
+r_birds <- unique(mp$indiv)
+
+r_sim_out <- list()
+
+# start with getting the rasters from real birds
+for(r in 1:length(r_birds)){
+  print(r_birds[r])
+  
+  # get the corresponding raster for each real individual
+  fd_aut <- fd_aut_out[[r]]
+  fd_spr <- fd_spr_out[[r]]
+  
+  # get the simulated tracks corresponding to each real individual 
+  sim_t_r <- subset(sim_t, r_id == r_birds[r])
+  
+  cost_out <- list()
+  
+  # for each simulated individual in the dataset
+  for(i in 1:length(unique(sim_t_r$indiv))) {
+    print(i)
+    
+    # get simulated individual 
+    sim_i <- subset(sim_t_r, indiv == i)
+    
+    head(sim_i)
+    
+    cst_ind_aut <- list()
+    cst_ind_spr <- list()
+    
+    # to get the cost for each migration
+    migs <- c("autumn", "spring")
+    
+    out_m_aut <- list()
+    out_m_spr <- list()
+    
+    for(m in migs){
+      print(m)
+      sim_i_m <- subset(sim_i, mig == m)
+      
+      for(x in 2:length(sim_i_m$lat)) {
+        
+        # print(x)
+        
+        if(unique(sim_i_m$mig) == "autumn") {
+          crds <- sim_i_m[,1:2]
+          cd_aut <- costDistance(fd_aut, SpatialPoints(crds[x-1,]), SpatialPoints(crds[x,]))
+          cst_ind_aut[[x]] <- cd_aut
+        }
+        
+        
+        if(unique(sim_i_m$mig) == "spring") {
+          crds <- na.omit(sim_i_m[,1:2])
+          cd_spr <- costDistance(fd_aut, SpatialPoints(crds[x-1,]), SpatialPoints(crds[x,]))
+          cst_ind_spr[[x]] <- cd_spr
+        }
+        
+        
+      }
+      
+      t_aut <- do.call("c",cst_ind_aut)
+      
+      t_spr <- do.call("c",cst_ind_spr)
+      
+      out_m_aut[[m]] <- t_aut
+      out_m_spr[[m]] <- t_spr
+      
+    }
+    
+    ca <- do.call("c", out_m_aut)
+    cs <- do.call("c", out_m_spr)
+    
+    df <- data.frame(cost_aut = sum(na.omit(ca[is.finite(ca)])), 
+                     cost_aut_ind = sum(na.omit(ca[is.finite(ca)]))/length(sim_i_m$lon), 
+                     cost_spr = sum(na.omit(cs[is.finite(cs)])), 
+                     cost_spr_ind = sum(na.omit(cs[is.finite(cs)]))/length(sim_i_m$lon),
+                     sim_indiv = i, r_id = r_birds[r], loc = unique(sim_i_m$loc))
+    
+    cost_out[[i]] <- df
+    
+  }
+  
+  
+  c_o <- do.call("rbind", cost_out)
+  
+  r_sim_out[[r]] <- c_o
+  
+}
+
+# save(r_sim_out, file = "data/wind_analyses/flight_costs/cost_out_sim_100inds_finalV2")
+load("data/wind_analyses/flight_costs/cost_out_sim_100inds_finalV2")
+
+# bind together
+s_out <- do.call("rbind", r_sim_out)
+head(s_out)
+
+s<-s_out
+colnames(s) <- c("cost_aut_rl", "cost_aut_ind", "cost_spr_rl", "cost_spr_ind", "sim_indiv", "r_id",      "loc")
+
+# get raw cost into long format 
+s_raw_c <- pivot_longer(s_out, cols = c("cost_aut", "cost_spr"), names_to = "mig", values_to = "cost")
+
+# get cost index into long format
+s_p <- pivot_longer(s_out, cols = c("cost_aut_ind", "cost_spr_ind"), names_to = "mig", values_to = "cost_ind")
+
+
+
 
 
 ######################################################
