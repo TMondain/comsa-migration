@@ -56,6 +56,8 @@ mp <- mp %>% mutate(mig = gsub("Autumn", replacement = "autumn", x = mig),
 # make sure bird 7 (Scotland) all set to autumn because failed.
 mp$mig[mp$indiv=='Bird7'] <- "autumn"
 
+# define the altitudes to download
+pressure_levels <- c(1000, 925, 850, 700) # sea level, 779, 1502 and 3130 m a.s.l
 
 
 
@@ -81,10 +83,6 @@ fd_spr_out <- list()
 # define the grid to download
 lat_range <- c(-10, 72.5)      #latitude range
 lon_range <- c(-30, 40)     #longitude range
-
-# define the altitudes to download
-pressure_levels <- c(1000, 925, 850, 700) # sea level, 779, 1502 and 3130 m a.s.l
-
 
 for(w in 1:length(inds)) {
   print(paste(inds[w], w, sep = " "))
@@ -431,9 +429,7 @@ mp <- mp %>%
 
 all_out <- list()
 all_out_sim <- list()
-
-# pressure levlels data frame to store everything relevant to real birds
-pressure_level_df <- data.frame()
+pressure_level_out <- list()
 
 i_r <- unique(ms$indiv)
 mig_pos <- list()
@@ -509,6 +505,9 @@ for(i in 1:length(i_r)){
   cost_out <- list()
   cost_out_sim <- list()
   
+  # pressure levlels data frame to store everything relevant to real birds
+  pressure_level_df <- data.frame()
+  
   # loop through migrations
   migs <- unique(ind_pos_nwint$mig)
   
@@ -567,7 +566,6 @@ for(i in 1:length(i_r)){
         
         next
       }
-      
       
       ## calculate cost of relocations  
       if(migs[m] == "autumn") {
@@ -645,7 +643,7 @@ for(i in 1:length(i_r)){
       
     }
     
-    ## output of real bird costs
+    ## output of real bird summed costs across all relocations for one migration
     cost_out[[m]] <- df
     
     #################################
@@ -663,27 +661,42 @@ for(i in 1:length(i_r)){
     # 1 degree =~111km, so sample with 1 stdev for lat and 0.5 stdevs for longitude
     # This is generated for each real bird and each migration
     # then bind the true coordinates (from the real bird) to the simulated data
-    lon_sim <- data.frame(replicate(100,rnorm(length(crds$lon), crds$lon, 0.5))) %>% rownames_to_column()
-    lat_sim <- data.frame(replicate(100,rnorm(length(crds$lat), crds$lat, 1))) %>% rownames_to_column()
     
+    
+    # subset the outputted pressure data from above to the right migration 
+    # and use the stored coordinates to generate the simulated tracks.
+    # need to do this because some of the true coordinates fall outside
+    # of the area of interest
+    pressure_mig_subset <- pressure_level_df[pressure_level_df$migration == migs[m],]
+    
+    # simulate tracks
+    lon_sim <- data.frame(replicate(100,rnorm(length(pressure_mig_subset$lon), 
+                                              pressure_mig_subset$lon, 
+                                              0.5))) %>% 
+      rownames_to_column()
+    
+    lat_sim <- data.frame(replicate(100,rnorm(length(pressure_mig_subset$lat), 
+                                              pressure_mig_subset$lat, 
+                                              1))) %>% 
+      rownames_to_column()
+    
+    # pivot to 'long' format
     lons_t <- lon_sim %>% pivot_longer(cols = 2:101, values_to = "lon") %>% arrange(name)
     lats_t <- lat_sim %>% pivot_longer(cols = 2:101, values_to = "lat") %>% arrange(name)
     
-    # subset the data to the right migration to bind to the simulation dataset
-    press_subs <- pressure_level_df[pressure_level_df$migration == migs[m],]
-    
-    locs_sim <- cbind(lons_t, lats_t[,3]) %>% group_by(name) %>% 
+    # create the simulated tracks dataframe and smooth
+    locs_sim <- cbind(lons_t, 
+                      lats_t[,3],
+                      true_lon = pressure_mig_subset$lon,
+                      true_lat = pressure_mig_subset$lat,
+                      alt_ind = c(pressure_mig_subset$pressure_index),
+                      alt = c(pressure_mig_subset$pressure_level)) %>% 
+      group_by(name) %>% 
       mutate(lon = c(smooth(lon, twiceit = T)),
-             lat = c(smooth(lat, twiceit = T)),
-             true_lon = crds$lon,
-             true_lat = crds$lat,
-             alt_ind = c(NA, press_subs$pressure_index),
-             alt = c(NA, press_subs$pressure_level))
+             lat = c(smooth(lat, twiceit = T)))
     head(locs_sim)
     
-    # ggplot(locs_sim, aes(x = lon, y = lat)) + geom_line()# +
-    #   geom_line(data = crds, aes(x = lon, y = lat, colour = 'real'))
-    
+    # sort by simulated bird name
     sim_inds <- unique(locs_sim$name) %>% mixedsort()
     
     
@@ -822,14 +835,17 @@ for(i in 1:length(i_r)){
       }
       
     }
+    
+    # store the migration of the simulated bird
+    cost_out_sim[[m]] <- do.call("rbind", cost_individual_sim)
+    
   }
-  
-  # save the two migrations of the simulated bird
-  cost_out_sim[[m]] <- do.call("rbind", cost_individual_sim)
-  
   
   all_out[[i]] <- do.call("rbind", cost_out) # real birds
   all_out_sim[[i]] <- do.call("rbind", cost_out_sim) # simulated birds
+  
+  pressure_level_out[[i]] <- pressure_level_df 
+  
 }
 
 # Cost of the tracks of real birds
