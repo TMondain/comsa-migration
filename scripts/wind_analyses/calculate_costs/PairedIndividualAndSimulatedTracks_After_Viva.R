@@ -692,8 +692,8 @@ for(i in 1:length(i_r)){
                       alt_ind = c(pressure_mig_subset$pressure_index),
                       alt = c(pressure_mig_subset$pressure_level)) %>% 
       group_by(name) %>% 
-      mutate(lon = c(smooth(lon, twiceit = T)),
-             lat = c(smooth(lat, twiceit = T)))
+      mutate(lon = c(smooth(lon, twiceit = TRUE)),
+             lat = c(smooth(lat, twiceit = TRUE)))
     head(locs_sim)
     
     # sort by simulated bird name
@@ -852,11 +852,39 @@ for(i in 1:length(i_r)){
 cst_mig <- do.call("rbind", all_out)
 head(cst_mig)
 
-# write.csv(cst_mig, file = "data/wind_analyses/flight_costs/cost_mig_individuals_final.csv")
-cst_mig <- read.csv("data/wind_analyses/flight_costs/cost_mig_individuals_final.csv")[,-1]
+# write.csv(cst_mig, file = "data/wind_analyses/flight_costs/cost_mig_individuals.csv")
+cst_mig <- read.csv("data/wind_analyses/flight_costs/cost_mig_individuals.csv")[,-1]
 
 
+# cost of the tracks accounting for the geolocation error
+cst_mig_sim_rl <- do.call("rbind", all_out_sim)
 
+# write.csv(cst_mig_sim_rl, file = "data/wind_analyses/flight_costs/cost_mig_individuals_simulated_geolocation_error.csv")
+cst_mig_sim_rl <- read.csv("data/wind_analyses/flight_costs/cost_mig_individuals_simulated_geolocation_error.csv")
+head(cst_mig_sim_rl)
+unique(cst_mig_sim_rl$r_in)
+
+
+# Pressure df real birds
+pressure_df <- do.call("rbind", pressure_level_out)
+
+# write.csv(pressure_df, file = "data/wind_analyses/flight_costs/pressure_levels_per_relocation.csv")
+press_per_loc <- read.csv("data/wind_analyses/flight_costs/pressure_levels_per_relocation.csv")
+head(press_per_loc)
+unique(press_per_loc$indiv)
+
+ggplot(press_per_loc, aes(x = lat, y = pressure_index, colour = indiv)) +
+  geom_point() +
+  geom_line() +
+  facet_wrap(~migration) +
+  ylim(1,5)
+
+
+ggplot(press_per_loc, aes(x = lat, y = pressure_index, colour = migration)) +
+  # geom_point() +
+  geom_smooth() +
+  # facet_wrap(~migration, scales = 'free') +
+  ylim(0,5)
 
 
 ###########################################################
@@ -866,14 +894,14 @@ cst_mig <- read.csv("data/wind_analyses/flight_costs/cost_mig_individuals_final.
 # each track's cost is simulated relative to the conditions
 # the real bird experienced during it migration
 head(sim_t)
-
+str(sim_t)
 # smooth the tracks of simulated birds to be like
 # real birds
 sim_t <- sim_t %>% group_by(indiv, mig, r_id) %>% 
-  mutate(lon = smooth(lon, twiceit = T),
-         lat = smooth(lat, twiceit = T))
+  mutate(lon = c(smooth(lon, twiceit = TRUE)),
+         lat = c(smooth(lat, twiceit = TRUE)))
 
-r_birds <- unique(mp$indiv)
+r_birds <- unique(sim_t$r_id)
 
 r_sim_out <- list()
 
@@ -918,14 +946,18 @@ for(r in 1:length(r_birds)){
         
         if(unique(sim_i_m$mig) == "autumn") {
           crds <- sim_i_m[,1:2]
-          cd_aut <- costDistance(fd_aut, SpatialPoints(crds[x-1,]), SpatialPoints(crds[x,]))
+          cd_aut <- gdistance::costDistance(fd_aut[[sample(1:length(fd_aut), 1)]], 
+                                            SpatialPoints(crds[x-1,]), 
+                                            SpatialPoints(crds[x,]))
           cst_ind_aut[[x]] <- cd_aut
         }
         
         
         if(unique(sim_i_m$mig) == "spring") {
           crds <- na.omit(sim_i_m[,1:2])
-          cd_spr <- costDistance(fd_aut, SpatialPoints(crds[x-1,]), SpatialPoints(crds[x,]))
+          cd_spr <- costDistance(fd_spr[[sample(1:length(fd_spr), 1)]], 
+                                 SpatialPoints(crds[x-1,]), 
+                                 SpatialPoints(crds[x,]))
           cst_ind_spr[[x]] <- cd_spr
         }
         
@@ -977,16 +1009,4 @@ s_raw_c <- pivot_longer(s_out, cols = c("cost_aut", "cost_spr"), names_to = "mig
 # get cost index into long format
 s_p <- pivot_longer(s_out, cols = c("cost_aut_ind", "cost_spr_ind"), names_to = "mig", values_to = "cost_ind")
 
-
-
-
-
-######################################################
-# cost of the tracks accounting for the geolocation error
-###
-
-cst_mig_sim_rl <- do.call("rbind", all_out_sim)
-
-# write.csv(cst_mig_sim_rl, file = "data/wind_analyses/flight_costs/cost_mig_individuals_simulated_geolocation_error_final.csv")
-cst_mig_sim_rl <- read.csv("data/wind_analyses/flight_costs/cost_mig_individuals_simulated_geolocation_error_final.csv")
 
