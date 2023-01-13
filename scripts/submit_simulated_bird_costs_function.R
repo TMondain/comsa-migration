@@ -37,3 +37,10 @@ write.csv(pars, paste0('_rslurm_simulated_comsa_costs/pars.csv'))#to match to er
 # 
 # real_indiv = pars$real_indiv[1]
 # indiv = pars$indiv[1]
+
+## For after for combining
+fls <- list.files('outputs/', full.names = TRUE)
+
+combined_outputs <- do.call(rbind, lapply(fls, read.csv))
+
+write.csv(combined_outputs, file = 'outputs/1_combined_simulation_costs.csv')
