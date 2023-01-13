@@ -10,7 +10,7 @@ library(rWind)
 library(rgdal)
 library(raster)
 library(lme4)
-library(cowplot)
+# library(cowplot)
 library(lubridate)
 library(patchwork)
 
@@ -20,45 +20,15 @@ source('scripts/custom_functions.R')
 world.shp <- readOGR("data/worldmap.geojson", verbose = F)
 
 #####     load rasters for plotting     #####
-load("data/wind_analyses/wind_cost_rasters/w_aut_ras_final")
-load("data/wind_analyses/wind_cost_rasters/w_spr_ras_final")
-
+w_aut_ras_final <- readRDS("data/wind_analyses/wind_cost_rasters/wind_raster_autumn.rds")
+w_spr_ras_final <- readRDS("data/wind_analyses/wind_cost_rasters/wind_raster_spring.rds")
 
 #####     load simulated bird tracks for plotting     #####
-load("data/wind_analyses/simulated_bird_tracks/simulated_birds_100_finalV2")
+simulated_bird_tracks <- readRDS("data/wind_analyses/simulated_birds_n100.rds")
 
 
-#####     load simulated bird costs     #####
-load("data/wind_analyses/flight_costs/cost_out_sim_100inds_finalV2")
-s_out <- do.call("rbind", r_sim_out)
-head(s_out)
-
-
-#####     load real bird costs     #####
-cst_mig <- read.csv("data/wind_analyses/flight_costs/cost_mig_individuals_final.csv")[,-1]
-
-
-#####     load geolocation error simulation     #####
-glc_error <- read.csv("data/wind_analyses/flight_costs/cost_mig_individuals_simulated_geolocation_error_final.csv")
-glc_err <- glc_error[,c(2:3, 5:7)]
-glc_err$type <- "real_gls_err"
-
-colnames(glc_err) <- c("cost", "indiv", "loc", "mig", "c_ind", "type")
-head(glc_err)
-
-#####     create combined real and simulated bird df     #####
-head(s_out)
-
-s_p <- pivot_longer(s_out, cols = c("cost_aut_ind", "cost_spr_ind"), names_to = "mig", values_to = "cost_ind")
-
-sp_t <- s_p[,c(2,4:7)] %>% mutate(mig = ifelse(mig == "cost_aut_ind", "autumn", "spring"),
-                                  type = "sim")
-colnames(sp_t) <- c("cost", "indiv", "loc", "mig", "c_ind", "type")
-cst_mig$type <- "real"
-
-# combined dataset
-com_d <- rbind(sp_t, cst_mig, glc_err)
-head(com_d)
+#####     load migration costs     #####
+com_d <- read.csv('data/wind_analyses/combined_real_simulated_costs.csv')
 
 
 
@@ -75,8 +45,8 @@ mp <- mp %>% mutate(mig = gsub(pattern = "Spring", replacement = "spring", x = m
 mp <- mp %>% 
   na.omit %>% 
   group_by(indiv) %>% 
-  mutate(lat = c(smooth(lat, twiceit = T)),
-         lon = c(smooth(lon, twiceit = T))) %>% 
+  mutate(lat = c(smooth(lat, twiceit = TRUE)),
+         lon = c(smooth(lon, twiceit = TRUE))) %>% 
   ungroup()
 
 
@@ -87,13 +57,13 @@ mp <- mp %>%
 
 head(com_d)
 
-c_ind_pl <- ggplot(data = subset(com_d, type != "real_gls_err"), aes(x = loc, y = c_ind, fill = type)) +
+c_ind_pl <- ggplot(data = subset(com_d), aes(x = loc, y = c_ind, fill = type)) +
   geom_boxplot() +
   facet_wrap(~mig, labeller=labeller(mig=c(spring='Spring',autumn='Autumn'))) + 
   guides(fill=guide_legend(title="Bird type"),
          colour = 'none') +
   xlab("Tagging location") + ylab("Cost index") + 
-  scale_fill_manual(labels = c("Observed", "Simulated"), values = c("#F8766D", "#619CFF")) +
+  # scale_fill_manual(labels = c("Observed", "Simulated"), values = c("#F8766D", "#619CFF")) +
   theme_classic() +
   theme(text = element_text(size = 15), 
         legend.title = element_blank(),

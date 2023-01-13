@@ -261,7 +261,7 @@ dir.create("data/wind_analyses/wind_cost_rasters/", recursive = TRUE)
 # saveRDS(w_aut_ras, file = "data/wind_analyses/wind_cost_rasters/wind_raster_autumn.rds")
 # saveRDS(w_spr_ras, file = "data/wind_analyses/wind_cost_rasters/wind_raster_spring.rds")
 w_aut_ras <- readRDS("data/wind_analyses/wind_cost_rasters/wind_raster_autumn.rds")
-w_spr_ras <- readRDS("data/wind_analyses/wind_cost_rasters/wind_raster_autumn.rds")
+w_spr_ras <- readRDS("data/wind_analyses/wind_cost_rasters/wind_raster_spring.rds")
 
 
 ## output flow dispersion files
@@ -762,48 +762,24 @@ for(i in 1:length(i_r)){
         #################################################
         if(migs[m] == "autumn") {
           
-          # if the true coords are the same then assign the cost to = 0
-          # round the crds to 1dp so that it has to move by >0.1 dp for it to 
-          # be considered a movement
-          # Then need to find the altitude that the real bird flew at
-          if(round(crds_sim[x_s, 'true_lon'], 1) == round(crds_sim[x_s-1, 'true_lon'], 1) &
-             round(crds_sim[x_s, 'true_lat'], 1) == round(crds_sim[x_s-1, 'true_lat'], 1)) {
-            
-            cd_aut_sim <- 0
-            cst_track_aut_sim[[x_s]] <- cd_aut_sim
-            
-          } else {
-            
-            # use the altitude from the corresponding real bird
-            cd_aut_sim <- gdistance::costDistance(fd_aut[[crds_sim$alt_ind[x_s]]], 
-                                                  SpatialPoints(crds_sim[x_s-1,3:4]), 
-                                                  SpatialPoints(crds_sim[x_s,3:4]))
-            
-            cst_track_aut_sim[[x_s]] <- cd_aut_sim
-          }
+          # use the altitude from the corresponding real bird
+          cd_aut_sim <- gdistance::costDistance(fd_aut[[crds_sim$alt_ind[x_s]]], 
+                                                SpatialPoints(crds_sim[x_s-1,3:4]), 
+                                                SpatialPoints(crds_sim[x_s,3:4]))
+          
+          cst_track_aut_sim[[x_s]] <- cd_aut_sim
+          
         }
         
         if(migs[m] == "spring") {
           
-          # if the true coords are the same then assign the cost to = 0
-          # round the crds to 1dp so that it has to move by >0.1 dp for it to 
-          # be considered a movement
-          # Then need to find the altitude that the real bird flew at
-          if(round(crds_sim[x_s, 'true_lon'], 1) == round(crds_sim[x_s-1, 'true_lon'], 1) &
-             round(crds_sim[x_s, 'true_lat'], 1) == round(crds_sim[x_s-1, 'true_lat'], 1)) {
-            
-            cd_spr_sim <- 0
-            cst_track_spr_sim[[x_s]] <- cd_spr_sim
-            
-          } else {
-            
-            # use the altitude from the corresponding real bird
-            cd_spr_sim <- gdistance::costDistance(fd_aut[[crds_sim$alt_ind[x_s]]], 
-                                                  SpatialPoints(crds_sim[x_s-1,3:4]), 
-                                                  SpatialPoints(crds_sim[x_s,3:4]))
-            
-            cst_track_spr_sim[[x_s]] <- cd_spr_sim
-          }
+          # use the altitude from the corresponding real bird
+          cd_spr_sim <- gdistance::costDistance(fd_spr[[crds_sim$alt_ind[x_s]]], 
+                                                SpatialPoints(crds_sim[x_s-1,3:4]), 
+                                                SpatialPoints(crds_sim[x_s,3:4]))
+          
+          cst_track_spr_sim[[x_s]] <- cd_spr_sim
+          
           
         }
         
@@ -815,8 +791,12 @@ for(i in 1:length(i_r)){
         t_aut <- t_aut[is.finite(t_aut)]
         
         # save the DFs for each individual within each migration
-        cost_individual_sim[[s]] <- data.frame(cost = sum(na.omit(t_aut)), r_in = i_r[i], indiv = sim_inds[s], 
-                                               loc = unique(i1$loc), mig = migs[m], c_ind = sum(na.omit(t_aut))/(dim(crds)[1]))
+        cost_individual_sim[[s]] <- data.frame(cost = sum(na.omit(t_aut)), 
+                                               r_in = i_r[i], 
+                                               indiv = sim_inds[s], 
+                                               loc = unique(i1$loc), 
+                                               mig = migs[m], 
+                                               c_ind = sum(na.omit(t_aut))/(dim(crds)[1]))
         
       }
       
@@ -852,14 +832,14 @@ for(i in 1:length(i_r)){
 cst_mig <- do.call("rbind", all_out)
 head(cst_mig)
 
-# write.csv(cst_mig, file = "data/wind_analyses/flight_costs/cost_mig_individuals.csv")
+write.csv(cst_mig, file = "data/wind_analyses/flight_costs/cost_mig_individuals.csv")
 cst_mig <- read.csv("data/wind_analyses/flight_costs/cost_mig_individuals.csv")[,-1]
 
 
 # cost of the tracks accounting for the geolocation error
 cst_mig_sim_rl <- do.call("rbind", all_out_sim)
 
-# write.csv(cst_mig_sim_rl, file = "data/wind_analyses/flight_costs/cost_mig_individuals_simulated_geolocation_error.csv")
+write.csv(cst_mig_sim_rl, file = "data/wind_analyses/flight_costs/cost_mig_individuals_simulated_geolocation_error.csv")
 cst_mig_sim_rl <- read.csv("data/wind_analyses/flight_costs/cost_mig_individuals_simulated_geolocation_error.csv")
 head(cst_mig_sim_rl)
 unique(cst_mig_sim_rl$r_in)
@@ -868,7 +848,7 @@ unique(cst_mig_sim_rl$r_in)
 # Pressure df real birds
 pressure_df <- do.call("rbind", pressure_level_out)
 
-# write.csv(pressure_df, file = "data/wind_analyses/flight_costs/pressure_levels_per_relocation.csv")
+write.csv(pressure_df, file = "data/wind_analyses/flight_costs/pressure_levels_per_relocation.csv")
 press_per_loc <- read.csv("data/wind_analyses/flight_costs/pressure_levels_per_relocation.csv")
 head(press_per_loc)
 unique(press_per_loc$indiv)

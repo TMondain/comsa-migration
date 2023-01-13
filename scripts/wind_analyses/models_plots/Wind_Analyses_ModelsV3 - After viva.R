@@ -12,34 +12,7 @@ library(cowplot)
 library(readr)
 library(lmerTest)
 
-
-#####     load simulated bird costs     #####
-load("data/wind_analyses/flight_costs/cost_out_sim_100inds_finalV2")
-
-#####     load real bird costs     #####
-cst_mig <- read.csv("data/wind_analyses/flight_costs/cost_mig_individuals_final.csv")[,-1]
-
-#####     load geolocation error simulation     #####
-glc_err <- read.csv("data/wind_analyses/flight_costs/cost_mig_individuals_simulated_geolocation_error_final.csv")
-glc_err <- glc_err[,c(2:3, 5:7)]
-glc_err$type <- "real_gls_err"
-
-colnames(glc_err) <- c("cost", "indiv", "loc", "mig", "c_ind", "type")
-head(glc_err)
-
-#####     create combined real and simulated bird df     #####
-s_out <- do.call("rbind", r_sim_out)
-head(s_out)
-
-s_p <- pivot_longer(s_out, cols = c("cost_aut_ind", "cost_spr_ind"), names_to = "mig", values_to = "cost_ind")
-
-sp_t <- s_p[,c(2,4:7)] %>% mutate(mig = ifelse(mig == "cost_aut_ind", "autumn", "spring"),
-                                  type = "sim")
-colnames(sp_t) <- c("cost", "indiv", "loc", "mig", "c_ind", "type")
-cst_mig$type <- "real"
-com_d <- rbind(sp_t, cst_mig, glc_err)[,-1]
-head(com_d)
-
+com_d <- read.csv('data/wind_analyses/combined_real_simulated_costs.csv')
 
 
 #################################################################
@@ -214,31 +187,31 @@ anscot_s1 <- anova(scot_s1, scot_s1_i)
 
 # With two groups for cost reporting
 obvs_sim <- data.frame(Location = rep(c("Sedbergh", "Senegal", "Scotland"), 2),
-           Migration = rep(c("Autumn", "Spring"), each = 3),
-           Intercept = c(sed_a$coefficients[1,1],sen_a$coefficients[1,1],scot_a$coefficients[1,1],
-                         sed_s$coefficients[1,1],sen_s$coefficients[1,1],scot_s$coefficients[1,1]), 
-           Simulated_estimate = c(sed_a$coefficients[2,1],sen_a$coefficients[2,1],scot_a$coefficients[2,1],
-                                  sed_s$coefficients[2,1],sen_s$coefficients[2,1],scot_s$coefficients[2,1]), 
-           Standard_error = c(sed_a$coefficients[2,2],sen_a$coefficients[2,2],scot_a$coefficients[2,2],
-                              sed_s$coefficients[2,2],sen_s$coefficients[2,2],scot_s$coefficients[2,2]),
-           
-           X2_value = c(ansed_a1$Chisq[2], ansen_a1$Chisq[2], anscot_a1$Chisq[2],
-                        ansed_s1$Chisq[2], ansen_s1$Chisq[2], anscot_s1$Chisq[2]),
-           P_value = c(ansed_a1$`Pr(>Chisq)`[2], ansen_a1$`Pr(>Chisq)`[2], anscot_a1$`Pr(>Chisq)`[2],
-                       ansed_s1$`Pr(>Chisq)`[2], ansen_s1$`Pr(>Chisq)`[2], anscot_s1$`Pr(>Chisq)`[2]),
-           
-           T_value = c(sed_a$coefficients[2,3], sen_a$coefficients[2,3], scot_a$coefficients[2,3],
-                       sed_s$coefficients[2,3], sen_s$coefficients[2,3], scot_s$coefficients[2,3]),
-           RE_variance = c(as.data.frame(VarCorr(sed_a1))[1,4], as.data.frame(VarCorr(sen_a1))[1,4],
-                           as.data.frame(VarCorr(scot_a1))[1,4], as.data.frame(VarCorr(sed_s1))[1,4],
-                           as.data.frame(VarCorr(sen_s1))[1,4], as.data.frame(VarCorr(scot_s1))[1,4]),
-           RE_stdev = c(as.data.frame(VarCorr(sed_a1))[1,5], as.data.frame(VarCorr(sen_a1))[1,5],
-                        as.data.frame(VarCorr(scot_a1))[1,5], as.data.frame(VarCorr(sed_s1))[1,5],
-                        as.data.frame(VarCorr(sen_s1))[1,5], as.data.frame(VarCorr(scot_s1))[1,5]),
-           Marginal_R2 = c(r.squaredGLMM(sed_a1)[1], r.squaredGLMM(sen_a1)[1], r.squaredGLMM(scot_a1)[1], 
-                           r.squaredGLMM(sed_s1)[1], r.squaredGLMM(sen_s1)[1], r.squaredGLMM(scot_s1)[1]),
-           Conditional_R2 = c(r.squaredGLMM(sed_a1)[2], r.squaredGLMM(sen_a1)[2], r.squaredGLMM(scot_a1)[2], 
-                              r.squaredGLMM(sed_s1)[2], r.squaredGLMM(sen_s1)[2], r.squaredGLMM(scot_s1)[2]))
+                       Migration = rep(c("Autumn", "Spring"), each = 3),
+                       Intercept = c(sed_a$coefficients[1,1],sen_a$coefficients[1,1],scot_a$coefficients[1,1],
+                                     sed_s$coefficients[1,1],sen_s$coefficients[1,1],scot_s$coefficients[1,1]), 
+                       Simulated_estimate = c(sed_a$coefficients[2,1],sen_a$coefficients[2,1],scot_a$coefficients[2,1],
+                                              sed_s$coefficients[2,1],sen_s$coefficients[2,1],scot_s$coefficients[2,1]), 
+                       Standard_error = c(sed_a$coefficients[2,2],sen_a$coefficients[2,2],scot_a$coefficients[2,2],
+                                          sed_s$coefficients[2,2],sen_s$coefficients[2,2],scot_s$coefficients[2,2]),
+                       
+                       X2_value = c(ansed_a1$Chisq[2], ansen_a1$Chisq[2], anscot_a1$Chisq[2],
+                                    ansed_s1$Chisq[2], ansen_s1$Chisq[2], anscot_s1$Chisq[2]),
+                       P_value = c(ansed_a1$`Pr(>Chisq)`[2], ansen_a1$`Pr(>Chisq)`[2], anscot_a1$`Pr(>Chisq)`[2],
+                                   ansed_s1$`Pr(>Chisq)`[2], ansen_s1$`Pr(>Chisq)`[2], anscot_s1$`Pr(>Chisq)`[2]),
+                       
+                       T_value = c(sed_a$coefficients[2,3], sen_a$coefficients[2,3], scot_a$coefficients[2,3],
+                                   sed_s$coefficients[2,3], sen_s$coefficients[2,3], scot_s$coefficients[2,3]),
+                       RE_variance = c(as.data.frame(VarCorr(sed_a1))[1,4], as.data.frame(VarCorr(sen_a1))[1,4],
+                                       as.data.frame(VarCorr(scot_a1))[1,4], as.data.frame(VarCorr(sed_s1))[1,4],
+                                       as.data.frame(VarCorr(sen_s1))[1,4], as.data.frame(VarCorr(scot_s1))[1,4]),
+                       RE_stdev = c(as.data.frame(VarCorr(sed_a1))[1,5], as.data.frame(VarCorr(sen_a1))[1,5],
+                                    as.data.frame(VarCorr(scot_a1))[1,5], as.data.frame(VarCorr(sed_s1))[1,5],
+                                    as.data.frame(VarCorr(sen_s1))[1,5], as.data.frame(VarCorr(scot_s1))[1,5]),
+                       Marginal_R2 = c(r.squaredGLMM(sed_a1)[1], r.squaredGLMM(sen_a1)[1], r.squaredGLMM(scot_a1)[1], 
+                                       r.squaredGLMM(sed_s1)[1], r.squaredGLMM(sen_s1)[1], r.squaredGLMM(scot_s1)[1]),
+                       Conditional_R2 = c(r.squaredGLMM(sed_a1)[2], r.squaredGLMM(sen_a1)[2], r.squaredGLMM(scot_a1)[2], 
+                                          r.squaredGLMM(sed_s1)[2], r.squaredGLMM(sen_s1)[2], r.squaredGLMM(scot_s1)[2]))
 obvs_sim
 # write.csv(obvs_sim, file = "AnalysesAndPlots/Outputs/Models_obs_vs_sim_Chi2.csv")
 
@@ -249,12 +222,12 @@ summary(lmer(c_ind ~ type + (1|indiv), data = subset(com_d, mig == "spring" )))
 
 
 # with three groups for cost reporting
- data.frame(Location = rep(c("Sedbergh", "Senegal", "Scotland"), 2),
+data.frame(Location = rep(c("Sedbergh", "Senegal", "Scotland"), 2),
            Migration = rep(c("Autumn", "Spring"), each = 3),
            Intercept_observed_bird = c(sed_a$coefficients[1,1],sen_a$coefficients[1,1],scot_a$coefficients[1,1],
                                        sed_s$coefficients[1,1],sen_s$coefficients[1,1],scot_s$coefficients[1,1]), 
            Simulated_estimate = c(sed_a$coefficients[2,1],sen_a$coefficients[2,1],scot_a$coefficients[2,1],
-                                         sed_s$coefficients[2,1],sen_s$coefficients[2,1],scot_s$coefficients[2,1]),
+                                  sed_s$coefficients[2,1],sen_s$coefficients[2,1],scot_s$coefficients[2,1]),
            Standard_error = c(sed_a$coefficients[2,2],sen_a$coefficients[2,2],scot_a$coefficients[2,2],
                               sed_s$coefficients[2,2],sen_s$coefficients[2,2],scot_s$coefficients[2,2]),
            T_value = c(sed_a$coefficients[2,3], sen_a$coefficients[2,3], scot_a$coefficients[2,3],
@@ -295,27 +268,27 @@ scot_s <- summary(lmer(c_ind ~ type-1 + (1|indiv), data = subset(com_d, loc == "
 
 # With two groups for cost reporting
 gls_err <- data.frame(Location = rep(c("Sedbergh", "Senegal", "Scotland"), 2),
-           Migration = rep(c("Autumn", "Spring"), each = 3),
-           Intercept = c(sed_a$coefficients[1,1],sen_a$coefficients[1,1],scot_a$coefficients[1,1],
-                         sed_s$coefficients[1,1],sen_s$coefficients[1,1],scot_s$coefficients[1,1]), 
-           Geolocation_error = c(sed_a$coefficients[2,1],sen_a$coefficients[2,1],scot_a$coefficients[2,1],
-                                  sed_s$coefficients[2,1],sen_s$coefficients[2,1],scot_s$coefficients[2,1]), 
-           Simulated_estimate = c(sed_a$coefficients[3,1],sen_a$coefficients[3,1],scot_a$coefficients[3,1],
-                                  sed_s$coefficients[3,1],sen_s$coefficients[3,1],scot_s$coefficients[3,1]), 
-           Standard_error = c(sed_a$coefficients[2,2],sen_a$coefficients[2,2],scot_a$coefficients[2,2],
-                              sed_s$coefficients[2,2],sen_s$coefficients[2,2],scot_s$coefficients[2,2]),
-           T_value = c(sed_a$coefficients[2,3], sen_a$coefficients[2,3], scot_a$coefficients[2,3],
-                       sed_s$coefficients[2,3], sen_s$coefficients[2,3], scot_s$coefficients[2,3]),
-           RE_variance = c(as.data.frame(VarCorr(sed_a1))[1,4], as.data.frame(VarCorr(sen_a1))[1,4],
-                           as.data.frame(VarCorr(scot_a1))[1,4], as.data.frame(VarCorr(sed_s1))[1,4],
-                           as.data.frame(VarCorr(sen_s1))[1,4], as.data.frame(VarCorr(scot_s1))[1,4]),
-           RE_stdev = c(as.data.frame(VarCorr(sed_a1))[1,5], as.data.frame(VarCorr(sen_a1))[1,5],
-                        as.data.frame(VarCorr(scot_a1))[1,5], as.data.frame(VarCorr(sed_s1))[1,5],
-                        as.data.frame(VarCorr(sen_s1))[1,5], as.data.frame(VarCorr(scot_s1))[1,5]),
-           Marginal_R2 = c(r.squaredGLMM(sed_a1)[1], r.squaredGLMM(sen_a1)[1], r.squaredGLMM(scot_a1)[1], 
-                           r.squaredGLMM(sed_s1)[1], r.squaredGLMM(sen_s1)[1], r.squaredGLMM(scot_s1)[1]),
-           Conditional_R2 = c(r.squaredGLMM(sed_a1)[2], r.squaredGLMM(sen_a1)[2], r.squaredGLMM(scot_a1)[2], 
-                              r.squaredGLMM(sed_s1)[2], r.squaredGLMM(sen_s1)[2], r.squaredGLMM(scot_s1)[2]))
+                      Migration = rep(c("Autumn", "Spring"), each = 3),
+                      Intercept = c(sed_a$coefficients[1,1],sen_a$coefficients[1,1],scot_a$coefficients[1,1],
+                                    sed_s$coefficients[1,1],sen_s$coefficients[1,1],scot_s$coefficients[1,1]), 
+                      Geolocation_error = c(sed_a$coefficients[2,1],sen_a$coefficients[2,1],scot_a$coefficients[2,1],
+                                            sed_s$coefficients[2,1],sen_s$coefficients[2,1],scot_s$coefficients[2,1]), 
+                      Simulated_estimate = c(sed_a$coefficients[3,1],sen_a$coefficients[3,1],scot_a$coefficients[3,1],
+                                             sed_s$coefficients[3,1],sen_s$coefficients[3,1],scot_s$coefficients[3,1]), 
+                      Standard_error = c(sed_a$coefficients[2,2],sen_a$coefficients[2,2],scot_a$coefficients[2,2],
+                                         sed_s$coefficients[2,2],sen_s$coefficients[2,2],scot_s$coefficients[2,2]),
+                      T_value = c(sed_a$coefficients[2,3], sen_a$coefficients[2,3], scot_a$coefficients[2,3],
+                                  sed_s$coefficients[2,3], sen_s$coefficients[2,3], scot_s$coefficients[2,3]),
+                      RE_variance = c(as.data.frame(VarCorr(sed_a1))[1,4], as.data.frame(VarCorr(sen_a1))[1,4],
+                                      as.data.frame(VarCorr(scot_a1))[1,4], as.data.frame(VarCorr(sed_s1))[1,4],
+                                      as.data.frame(VarCorr(sen_s1))[1,4], as.data.frame(VarCorr(scot_s1))[1,4]),
+                      RE_stdev = c(as.data.frame(VarCorr(sed_a1))[1,5], as.data.frame(VarCorr(sen_a1))[1,5],
+                                   as.data.frame(VarCorr(scot_a1))[1,5], as.data.frame(VarCorr(sed_s1))[1,5],
+                                   as.data.frame(VarCorr(sen_s1))[1,5], as.data.frame(VarCorr(scot_s1))[1,5]),
+                      Marginal_R2 = c(r.squaredGLMM(sed_a1)[1], r.squaredGLMM(sen_a1)[1], r.squaredGLMM(scot_a1)[1], 
+                                      r.squaredGLMM(sed_s1)[1], r.squaredGLMM(sen_s1)[1], r.squaredGLMM(scot_s1)[1]),
+                      Conditional_R2 = c(r.squaredGLMM(sed_a1)[2], r.squaredGLMM(sen_a1)[2], r.squaredGLMM(scot_a1)[2], 
+                                         r.squaredGLMM(sed_s1)[2], r.squaredGLMM(sen_s1)[2], r.squaredGLMM(scot_s1)[2]))
 
 gls_err
 
