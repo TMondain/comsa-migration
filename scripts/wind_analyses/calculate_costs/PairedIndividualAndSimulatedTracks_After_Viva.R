@@ -832,14 +832,14 @@ for(i in 1:length(i_r)){
 cst_mig <- do.call("rbind", all_out)
 head(cst_mig)
 
-write.csv(cst_mig, file = "data/wind_analyses/flight_costs/cost_mig_individuals.csv")
+# write.csv(cst_mig, file = "data/wind_analyses/flight_costs/cost_mig_individuals.csv")
 cst_mig <- read.csv("data/wind_analyses/flight_costs/cost_mig_individuals.csv")[,-1]
 
 
 # cost of the tracks accounting for the geolocation error
 cst_mig_sim_rl <- do.call("rbind", all_out_sim)
 
-write.csv(cst_mig_sim_rl, file = "data/wind_analyses/flight_costs/cost_mig_individuals_simulated_geolocation_error.csv")
+# write.csv(cst_mig_sim_rl, file = "data/wind_analyses/flight_costs/cost_mig_individuals_simulated_geolocation_error.csv")
 cst_mig_sim_rl <- read.csv("data/wind_analyses/flight_costs/cost_mig_individuals_simulated_geolocation_error.csv")
 head(cst_mig_sim_rl)
 unique(cst_mig_sim_rl$r_in)
@@ -848,7 +848,7 @@ unique(cst_mig_sim_rl$r_in)
 # Pressure df real birds
 pressure_df <- do.call("rbind", pressure_level_out)
 
-write.csv(pressure_df, file = "data/wind_analyses/flight_costs/pressure_levels_per_relocation.csv")
+# write.csv(pressure_df, file = "data/wind_analyses/flight_costs/pressure_levels_per_relocation.csv")
 press_per_loc <- read.csv("data/wind_analyses/flight_costs/pressure_levels_per_relocation.csv")
 head(press_per_loc)
 unique(press_per_loc$indiv)

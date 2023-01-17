@@ -14,21 +14,32 @@ library(lme4)
 library(lubridate)
 library(patchwork)
 
+library(rnaturalearth)
+library(sf)
+
 source('scripts/custom_functions.R')
 
 #####     load world map     #####
 world.shp <- readOGR("data/worldmap.geojson", verbose = F)
+world_coordinates <- map_data("world")
+world.shp <- ne_countries(scale = "medium", returnclass = "sf")
+plot(st_geometry(world.shp))
 
 #####     load rasters for plotting     #####
-w_aut_ras_final <- readRDS("data/wind_analyses/wind_cost_rasters/wind_raster_autumn.rds")
-w_spr_ras_final <- readRDS("data/wind_analyses/wind_cost_rasters/wind_raster_spring.rds")
+w_aut_ras <- readRDS("data/wind_analyses/wind_cost_rasters/wind_raster_autumn.rds")
+w_spr_ras <- readRDS("data/wind_analyses/wind_cost_rasters/wind_raster_spring.rds")
 
 #####     load simulated bird tracks for plotting     #####
 simulated_bird_tracks <- readRDS("data/wind_analyses/simulated_birds_n100.rds")
 
 
 #####     load migration costs     #####
-com_d <- read.csv('data/wind_analyses/combined_real_simulated_costs.csv')
+com_d <- read.csv('data/wind_analyses/combined_real_simulated_costs.csv') %>% 
+  mutate(loc = ifelse(loc == 'Sedbergh', 'Cumbria', loc))
+
+
+#####     load pressure data     #####
+pressure_df <- read.csv('data/wind_analyses/flight_costs/pressure_levels_per_relocation.csv')
 
 
 
@@ -57,18 +68,17 @@ mp <- mp %>%
 
 head(com_d)
 
-c_ind_pl <- ggplot(data = subset(com_d), aes(x = loc, y = c_ind, fill = type)) +
+c_ind_pl <- ggplot(data = subset(com_d, type != "real_gls_err"), aes(x = loc, y = c_ind, fill = type)) +
   geom_boxplot() +
   facet_wrap(~mig, labeller=labeller(mig=c(spring='Spring',autumn='Autumn'))) + 
   guides(fill=guide_legend(title="Bird type"),
          colour = 'none') +
   xlab("Tagging location") + ylab("Cost index") + 
-  # scale_fill_manual(labels = c("Observed", "Simulated"), values = c("#F8766D", "#619CFF")) +
+  scale_fill_manual(labels = c("Observed", "Simulated"), values = c("#F8766D", "#619CFF")) +
   theme_classic() +
   theme(text = element_text(size = 15), 
         legend.title = element_blank(),
-        strip.background = element_rect(fill="lightgrey")) +
-  scale_x_discrete(labels = c("Cumbria", "Senegal", "Scotland"))
+        strip.background = element_rect(fill="lightgrey"))
 c_ind_pl
 
 # # save
@@ -86,8 +96,7 @@ c_ind_pl <- ggplot(data = com_d, aes(x = loc, y = c_ind, fill = type)) +
   theme_classic() +
   theme(text = element_text(size = 15), 
         legend.title = element_blank(),
-        strip.background = element_rect(fill="lightgrey")) +
-  scale_x_discrete(labels = c("Cumbria", "Senegal", "Scotland"))
+        strip.background = element_rect(fill="lightgrey"))
 c_ind_pl
 
 # # save
@@ -95,12 +104,27 @@ c_ind_pl
 #        device = "tiff", dpi = 600, height = 7, width = 8)
 
 
+ggplot(subset(com_d), aes(x = loc, y = c_ind, fill = mig)) +
+  geom_boxplot() + 
+  guides(fill=guide_legend(title="Migration"),
+         colour = 'none') +
+  xlab("Tagging location") + ylab("Cost index") +
+  facet_wrap(~type,
+             labeller=labeller(type=c(real='Observed', 
+                                      real_gls_err='Geolocation error', 
+                                      sim = 'Simulated'))) + 
+  theme_classic()
+
 
 #####     Haven't done any plots of raw costs yet
 
 ###############################################
 #####     Plot 2 : Raw costs boxplots     #####
 ###############################################
+
+## does not make sense because of different numbers of relocations 
+## - rerun with same number?
+## also a bit broken I think check the binding files together to get raw costs
 
 head(s_out)
 head(cst_mig)
@@ -123,7 +147,7 @@ cst_mig$type <- "Real"
 
 raw_comb <- rbind(rs, cst_mig[,c(2:4, 1, 6)], ge)
 
-raw_c_pl <- ggplot(data = raw_comb, aes(x = loc, y = cost, fill = type)) + geom_boxplot() +
+raw_c_pl <- ggplot(data = com_d, aes(x = loc, y = cost, fill = type)) + geom_boxplot() +
   facet_grid(~mig, labeller=labeller(mig=c(spring='Spring',autumn='Autumn'))) + 
   guides(fill=guide_legend(title="Bird type"),
          colour = 'none') +
@@ -142,7 +166,9 @@ raw_c_pl
 #####     Plot 3 : Example track and raster     #####
 #####################################################
 
-pal.shp <- world.shp %>% crop(., extent(-25, 10, -5, 60)) %>% fortify
+pal.shp <- sf::st_make_valid(world.shp) %>% 
+  st_crop(xmin = -25, xmax = 10, 
+          ymin = -5, ymax = 60)# %>% fortify
 
 
 head(mp)
@@ -156,20 +182,21 @@ ggplot(mp, aes(x = lon, y = lat, colour = mig, group = interaction(indiv, mig)))
 
 unique(mp$indiv)
 
-ras <- as(w_aut_ras[[7]], "SpatialPixelsDataFrame")
+ras <- as(w_aut_ras[[7]][[1]], "SpatialPixelsDataFrame")
 ra <- as.data.frame(ras) %>% 
   mutate(mig = 'autumn')
 
 
-ras_s <- as(w_spr_ras[[7]], "SpatialPixelsDataFrame")
+ras_s <- as(w_spr_ras[[7]][[1]], "SpatialPixelsDataFrame")
 rs <- as.data.frame(ras_s) %>% 
   mutate(mig = 'spring')
 
 dk_spr <- ggplot() + geom_tile(data = rs, aes(x= x, y = y, fill = speed)) +
-  geom_polygon(data = pal.shp, aes(x = long, y = lat, group = group),
-               fill = NA, colour = "black", size = 0.4) +
+  geom_sf(data = pal.shp,
+          fill = NA, colour = "black", linewidth = 0.4) +
   coord_map("mercator", xlim = c(-25, 8), ylim = c(0, 60)) +
-  geom_path(data = subset(mp, indiv == "DK" & mig == "spring"), aes(x = lon, y = lat, colour = mig, group = mig)) +
+  geom_path(data = subset(mp, indiv == "DK" & mig == "spring"), 
+            aes(x = lon, y = lat, colour = mig, group = mig)) +
   xlab("") + ylab("") +
   theme_bw()+
   guides(colour = FALSE) +
@@ -177,8 +204,8 @@ dk_spr <- ggplot() + geom_tile(data = rs, aes(x= x, y = y, fill = speed)) +
   scale_fill_continuous(name = "Wind speed")
 
 dk_aut <- ggplot() + geom_tile(data = ra, aes(x= x, y = y, fill = speed)) +
-  geom_polygon(data = pal.shp, aes(x = long, y = lat, group = group),
-               fill = NA, colour = "black", size = 0.4) +
+  geom_sf(data = pal.shp,
+          fill = NA, colour = "black", size = 0.4) +
   coord_map("mercator", xlim = c(-25, 8), ylim = c(0, 60)) +
   geom_path(data = subset(mp, indiv == "DK" & mig == "autumn"), aes(x = lon, y = lat, colour = mig, group = mig)) +
   xlab("") + ylab("") +
@@ -280,12 +307,13 @@ ex_pl_ras_wind
 pal.shp <- world.shp %>% crop(., extent(-80, 155, -40, 90)) %>% fortify
 
 
-head(sim_t)
-pl_t <- sim_t %>% mutate(loc = as.character(loc),
-                         loc2 = ifelse(loc == "Sedbergh", "Sedbergh",
-                                       ifelse(loc == "Scotland" & (r_id != "Bird1" & r_id != "Bird2"), "Scotland Suth.", 
-                                              ifelse(loc == "Scotland" & r_id == "Bird1", "Scotland Spey.",
-                                                     ifelse(loc == "Scotland" & r_id == "Bird2", "Scotland Spey.", loc))))) %>% 
+head(simulated_bird_tracks)
+pl_t <- simulated_bird_tracks %>% 
+  mutate(loc = as.character(loc),
+         loc2 = ifelse(loc == "Sedbergh", "Sedbergh",
+                       ifelse(loc == "Scotland" & (r_id != "Bird1" & r_id != "Bird2"), "Scotland Suth.", 
+                              ifelse(loc == "Scotland" & r_id == "Bird1", "Scotland Spey.",
+                                     ifelse(loc == "Scotland" & r_id == "Bird2", "Scotland Spey.", loc))))) %>% 
   group_by(indiv, mig, loc, r_id) %>% 
   mutate(lon = c(smooth(lon, twiceit = T)),
          lat = c(smooth(lat, twiceit = T)),
@@ -323,7 +351,73 @@ sp <- ggplot(data = plt_sum, aes(x = lon, y = lat, group = interaction(mig, loc,
                                    "Cumbria", "Senegal"))
 
 cp <- ap + sp + plot_layout(guides = 'collect')
-# cp
+cp
 
 ggsave(cp, file = "outputs/Comb_Sim_Sum_pl2.tiff", device = "tiff", width = 10, height = 5)
 ggsave(sp, file = "outputs/Comb_Sim_average_tracks.tiff", device = "tiff", width = 6, height = 5)
+
+
+
+
+########################################################
+#####      Plot 5 : Optimal migration height       #####
+########################################################
+
+head(pressure_df)
+head(mp) 
+
+# get Europe
+euna <- sf::st_make_valid(world.shp) %>% 
+  st_crop(xmin = -25, xmax = 40, 
+          ymin = -5, ymax = 70)
+
+mpl <- ggplot() +
+  geom_sf(data = euna, fill = 'lightgrey') +
+  # geom_path(data = mp, 
+  #           aes(x = lon, y = lat, colour = mig, group = interaction(indiv, mig)),
+  #           alpha = 0.75) +
+  ylim(-5,70) +
+  theme_bw()
+mpl
+
+# altitude by migration with points
+ggplot(subset(pressure_df), 
+       aes(lat, pressure_index, colour = migration)) +
+  geom_point() +
+  geom_smooth() +
+  ylim(0.5,4.2) +
+  theme_classic() +
+  facet_wrap(~migration)
+
+# altitude by migration, smooth only
+alt_p <- ggplot(pressure_df, 
+                aes(lat, pressure_index, colour = migration)) +
+  # geom_point() +
+  geom_smooth() +
+  xlab('Latitude') +
+  ylab('Pressure index') +
+  ylim(0, 4.2) +
+  xlim(-5, 70) +
+  theme_bw() +
+  coord_flip()
+alt_p
+
+mpl + alt_p +
+  plot_layout(ncol = 2, widths = c(2,1))
+
+
+library(gamm4)
+
+m1 <- gamm4(pressure_index ~ s(lat, by = factor(migration)),
+            random = ~(1|indiv),
+            data = pressure_df)
+summary(m1$gam)
+m1
+
+ggplot(pressure_df, aes(x = factor(pressure_index), y = lat, fill = migration)) +
+  geom_boxplot()
+
+library(viridis)
+ggplot(subset(pressure_df, cost >0), aes(lon, lat, colour = log(cost))) +
+  geom_point() +
+  scale_colour_viridis()
