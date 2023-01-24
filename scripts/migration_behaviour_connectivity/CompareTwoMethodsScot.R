@@ -6,7 +6,7 @@ library(tidyverse)
 library(lubridate)
 
 # load Scottish deployment and retrieval data (from Summers et al. 2019 paper)
-dp <- read.csv("data/DeployRetrieveData_Scotland.csv")
+dp <- read.csv("data/movement_data/DeployRetrieveData_Scotland.csv")
 head(dp)
 
 # load my calculation of time estimates etc
