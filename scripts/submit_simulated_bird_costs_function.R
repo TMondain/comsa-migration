@@ -43,4 +43,4 @@ fls <- list.files('outputs/', full.names = TRUE)
 
 combined_outputs <- do.call(rbind, lapply(fls, read.csv))
 
-write.csv(combined_outputs, file = 'outputs/1_combined_simulation_costs.csv')
+write.csv(combined_outputs, file = 'outputs/combined_simulation_costs.csv')

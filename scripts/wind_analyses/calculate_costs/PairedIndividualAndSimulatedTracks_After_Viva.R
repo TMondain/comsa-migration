@@ -832,6 +832,8 @@ for(i in 1:length(i_r)){
 cst_mig <- do.call("rbind", all_out)
 head(cst_mig)
 
+## saving and checking files
+
 # write.csv(cst_mig, file = "data/wind_analyses/flight_costs/cost_mig_individuals.csv")
 cst_mig <- read.csv("data/wind_analyses/flight_costs/cost_mig_individuals.csv")[,-1]
 
@@ -842,7 +844,6 @@ cst_mig_sim_rl <- do.call("rbind", all_out_sim)
 # write.csv(cst_mig_sim_rl, file = "data/wind_analyses/flight_costs/cost_mig_individuals_simulated_geolocation_error.csv")
 cst_mig_sim_rl <- read.csv("data/wind_analyses/flight_costs/cost_mig_individuals_simulated_geolocation_error.csv")
 head(cst_mig_sim_rl)
-unique(cst_mig_sim_rl$r_in)
 
 
 # Pressure df real birds
@@ -851,25 +852,16 @@ pressure_df <- do.call("rbind", pressure_level_out)
 # write.csv(pressure_df, file = "data/wind_analyses/flight_costs/pressure_levels_per_relocation.csv")
 press_per_loc <- read.csv("data/wind_analyses/flight_costs/pressure_levels_per_relocation.csv")
 head(press_per_loc)
-unique(press_per_loc$indiv)
-
-ggplot(press_per_loc, aes(x = lat, y = pressure_index, colour = indiv)) +
-  geom_point() +
-  geom_line() +
-  facet_wrap(~migration) +
-  ylim(1,5)
-
-
-ggplot(press_per_loc, aes(x = lat, y = pressure_index, colour = migration)) +
-  # geom_point() +
-  geom_smooth() +
-  # facet_wrap(~migration, scales = 'free') +
-  ylim(0,5)
 
 
 ###########################################################
-####     Step 3: Get cost of simulated bird tracks     ####
+####     Step 4: Get cost of simulated bird tracks     ####
 ###########################################################
+
+## This code works, but takes a LONG time (>12hr). I instead used the NERC Jasmin
+## super computer to run this. This is contained in the two scripts
+## simulated_bird_costs_function.R, and
+## submit_simulated_bird_costs_function.R
 
 # each track's cost is simulated relative to the conditions
 # the real bird experienced during it migration
@@ -973,20 +965,9 @@ for(r in 1:length(r_birds)){
   
 }
 
-# save(r_sim_out, file = "data/wind_analyses/flight_costs/cost_out_sim_100inds_finalV2")
-load("data/wind_analyses/flight_costs/cost_out_sim_100inds_finalV2")
+sim_output <- do.call(rbind, r_sim_out)
 
-# bind together
-s_out <- do.call("rbind", r_sim_out)
+# write.csv(sim_output, file = "data/wind_analyses/flight_costs/combined_simulation_costs.csv")
+s_out <- read.csv("data/wind_analyses/flight_costs/combined_simulation_costs.csv")
 head(s_out)
-
-s<-s_out
-colnames(s) <- c("cost_aut_rl", "cost_aut_ind", "cost_spr_rl", "cost_spr_ind", "sim_indiv", "r_id",      "loc")
-
-# get raw cost into long format 
-s_raw_c <- pivot_longer(s_out, cols = c("cost_aut", "cost_spr"), names_to = "mig", values_to = "cost")
-
-# get cost index into long format
-s_p <- pivot_longer(s_out, cols = c("cost_aut_ind", "cost_spr_ind"), names_to = "mig", values_to = "cost_ind")
-
 
