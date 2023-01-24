@@ -48,6 +48,21 @@ data.frame(Bird_type = c("Observed", "Simulated"),
            Adjusted_Conditional_R2 = c(summary(mr)$adj.r.squared, r.squaredGLMM(ms)[2]))
 
 
+# real birds, by location does cost differ between autumn and spring?
+# it does, but the sample sizes apart from the cumbria combination are pathetic
+# lump together and accept it's not perfect
+sed_mig_m <- lm(c_ind~mig, data = subset(com_d, type == "real" & loc == "Sedbergh"))
+summary(sed_mig_m)
+scot_mig_m <- lm(c_ind~mig, data = subset(com_d, type == "real" & loc == "Scotland"))
+summary(scot_mig_m)
+sene_mig_m <- lm(c_ind~mig, data = subset(com_d, type == "real" & loc == "Senegal"))
+summary(sene_mig_m)
+
+ggplot(com_d, aes(x=type, y = c_ind, fill = mig)) +
+  geom_boxplot() +
+  facet_wrap(~loc) +
+  theme_bw()
+
 ###################################################################################
 #####     MODEL SET 2 : Does migration cost vary between tagging location     #####
 ###################################################################################
@@ -329,8 +344,7 @@ data.frame(Location = rep(c("Sedbergh", "Senegal", "Scotland"), 2),
 #####     Table 4 : Comparing duration of autumn and spring migration     #####
 ###############################################################################
 
-gm <- read_csv("C:/Users/tmond/OneDrive - Lancaster University/PhD Work/Analyses/GLS analyses/GLS_Summary_Movements_Stopovers/GLS_mig_R2.csv")
-gm <- read_csv("C:/Users/mondainm/OneDrive - Lancaster University/PhD Work/Analyses/GLS analyses/GLS_Summary_Movements_Stopovers/GLS_mig_R2.csv")
+gm <- read_csv("data/movement_data/GLS_mig_R.csv")
 head(gm)
 
 md <- gm %>% dplyr::select(aut = aut_dur, spr = spr_dur, loc = loc) %>% 
