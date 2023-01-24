@@ -347,8 +347,14 @@ data.frame(Location = rep(c("Sedbergh", "Senegal", "Scotland"), 2),
 gm <- read_csv("data/movement_data/GLS_mig_R.csv")
 head(gm)
 
+gm <- gm %>% 
+  rowwise() %>% 
+  mutate(aut_dur = win_arr - brd_dep,
+         spr_dur = brd_arr - win_dep)
+
 md <- gm %>% dplyr::select(aut = aut_dur, spr = spr_dur, loc = loc) %>% 
-  pivot_longer(cols = c(aut, spr), names_to = "mig", values_to = "dur")
+  pivot_longer(cols = c(aut, spr), names_to = "mig", values_to = "dur") %>% 
+  mutate(dur = as.numeric(dur))
 head(md)
 
 dm <- lm(dur ~ mig*loc, data=md)
@@ -414,14 +420,14 @@ mdur <- ggplot(data = md, aes(x = mig, y = dur)) + geom_boxplot() +
   theme_classic() +
   theme(text = element_text(size = 15)) + scale_x_discrete(labels = c("Autumn", "Spring")) 
 
-mdur_loc <- ggplot(data = md, aes(x = mig, y = dur, colour = loc)) + geom_boxplot() +
-  scale_color_discrete(labels = c("Scotland", "Sedbergh", "Senegal")) +
+mdur_loc <- ggplot(data = md, aes(x = loc, y = dur, colour = mig)) + geom_boxplot() +
+  # scale_color_discrete(labels = c("Scotland", "Sedbergh", "Senegal")) +
   labs(colour = "Location") +
   xlab("Migration") + ylab("Duration (days)") +
   theme_classic() +
-  theme(text = element_text(size = 15)) + scale_x_discrete(labels = c("Autumn", "Spring"))
+  theme(text = element_text(size = 15)) #+ scale_x_discrete(labels = c("Autumn", "Spring"))
 
-# c_dur <- plot_grid(mdur, mdur_loc, ncol = 2, labels = c("a", "b"))
+c_dur <- plot_grid(mdur, mdur_loc, ncol = 2, labels = c("a", "b"))
 
 getwd()
 # ggsave(mdur_loc, file = ""AnalysesAndPlots/Outputs/Migration_duration_loc.tiff", device = "tiff", dpi = 600,
