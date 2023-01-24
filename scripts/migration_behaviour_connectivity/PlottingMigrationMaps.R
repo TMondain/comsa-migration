@@ -259,7 +259,7 @@ comb_mig_pl <- ggplot() +
 comb_mig_pl
 
 # save
-ggsave(comb_mig_pl, file = "outputs/Fig_1_Combined_kd_mig_pl_75.tiff", device = "tiff", width = 12, height = 8, dpi = 600)
+ggsave(comb_mig_pl, file = "outputs/movements/Fig_1_Combined_kd_mig_pl_75.tiff", device = "tiff", width = 12, height = 8, dpi = 600)
 
 
 

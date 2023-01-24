@@ -20,8 +20,8 @@ library(sf)
 source('scripts/custom_functions.R')
 
 #####     load world map     #####
-world.shp <- readOGR("data/worldmap.geojson", verbose = F)
-world_coordinates <- map_data("world")
+# world.shp <- readOGR("data/worldmap.geojson", verbose = F)
+# world_coordinates <- map_data("world")
 world.shp <- ne_countries(scale = "medium", returnclass = "sf")
 plot(st_geometry(world.shp))
 
@@ -82,11 +82,11 @@ c_ind_pl <- ggplot(data = subset(com_d, type != "real_gls_err"), aes(x = loc, y 
 c_ind_pl
 
 # # save
-# ggsave(c_ind_pl, file = "outputs/wind_analyses/Cost_index_BoxplotV2.tiff",
+# ggsave(c_ind_pl, file = "outputs/wind_analyses/Cost_index_comparison.tiff",
 #        device = "tiff", dpi = 600, height = 7, width = 8)
 
 
-c_ind_pl <- ggplot(data = com_d, aes(x = loc, y = c_ind, fill = type)) +
+c_ind_gls_pl <- ggplot(data = com_d, aes(x = loc, y = c_ind, fill = type)) +
   geom_boxplot() +
   facet_grid(~mig, labeller=labeller(mig=c(spring='Spring',autumn='Autumn'))) + 
   guides(fill=guide_legend(title="Bird type"),
@@ -97,13 +97,14 @@ c_ind_pl <- ggplot(data = com_d, aes(x = loc, y = c_ind, fill = type)) +
   theme(text = element_text(size = 15), 
         legend.title = element_blank(),
         strip.background = element_rect(fill="lightgrey"))
-c_ind_pl
+c_ind_gls_pl
 
 # # save
-# ggsave(c_ind_pl, file = "outputs/wind_analyses/Cost_index_BoxplotV2_geoloc_error.tiff",
+# ggsave(c_ind_gls_pl, file = "outputs/wind_analyses/cost_index_geoloc_error_comparison.tiff",
 #        device = "tiff", dpi = 600, height = 7, width = 8)
 
-
+# flip the plot around to get observed birds' autumn and spring migration
+# next to each other
 ggplot(subset(com_d), aes(x = loc, y = c_ind, fill = mig)) +
   geom_boxplot() + 
   guides(fill=guide_legend(title="Migration"),
@@ -116,15 +117,11 @@ ggplot(subset(com_d), aes(x = loc, y = c_ind, fill = mig)) +
   theme_classic()
 
 
-#####     Haven't done any plots of raw costs yet
-
 ###############################################
 #####     Plot 2 : Raw costs boxplots     #####
 ###############################################
 
-## does not make sense because of different numbers of relocations 
-## - rerun with same number?
-## also a bit broken I think check the binding files together to get raw costs
+## Somewhat meaningless because of different numbers of relocations 
 
 head(s_out)
 head(cst_mig)
@@ -177,7 +174,8 @@ mp <- mp %>% filter((jd > 165 & jd < 240) | (jd > 75 & jd < 145)) %>%
   group_by(indiv) %>% mutate(lat = ma(lat, n=2),
                              lon = ma(lon, n=2))
 
-ggplot(mp, aes(x = lon, y = lat, colour = mig, group = interaction(indiv, mig))) + geom_path() +
+ggplot(mp, aes(x = lon, y = lat, colour = mig, group = interaction(indiv, mig))) + 
+  geom_path() +
   facet_wrap(~indiv)
 
 unique(mp$indiv)
@@ -199,7 +197,7 @@ dk_spr <- ggplot() + geom_tile(data = rs, aes(x= x, y = y, fill = speed)) +
             aes(x = lon, y = lat, colour = mig, group = mig)) +
   xlab("") + ylab("") +
   theme_bw()+
-  guides(colour = FALSE) +
+  guides(colour = 'none') +
   theme(text = element_text(size = 15)) + 
   scale_fill_continuous(name = "Wind speed")
 
@@ -236,6 +234,7 @@ dk_examp <- ggplot() +
   scale_fill_continuous(name = "Wind speed") +
   facet_wrap(~mig, ncol = 2,
              labeller = as_labeller(c(autumn = 'Autumn', spring = 'Spring')))
+dk_examp
 
 # ggsave(dk_examp, file = "outputs/Example_Plot_raster_DK2_patch.tiff", device = "tiff", dpi = 600, width = 8, height = 5)
 
