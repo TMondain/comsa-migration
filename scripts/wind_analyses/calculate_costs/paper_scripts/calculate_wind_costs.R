@@ -6,15 +6,6 @@ library(tidyverse)
 library(lubridate) # dates
 library(gtools) # for mixedsort() function
 library(sp) # for spatialpoints()
-# library(rgdal)
-# library(raster)
-# library(gridExtra)
-# library(rWind)
-# library(rworldmap)  
-# library(readr)
-# library(gdistance)
-# library(shape)
-# library(rCAT)
 
 library(RNCEP)
 library(rWind)
