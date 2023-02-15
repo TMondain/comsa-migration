@@ -10,7 +10,7 @@ dp <- read.csv("data/movement_data/DeployRetrieveData_Scotland.csv")
 head(dp)
 
 # load my calculation of time estimates etc
-ms <- read_csv("data/movement_data/GLS_mig_R2.csv")
+ms <- read_csv("data/movement_data/GLS_mig_R.csv")
 ms <- ms[ms$loc == "Scotland",]
 head(ms)
 
