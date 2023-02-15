@@ -9,12 +9,15 @@ Data is available from: xxxxx
 
 This code consists of three scripts, which can be run in any order. A brief summary of each:
 
-1. PlottingMigrationMaps.R - Carries out the kernel density analyses for each of the populations, and plots the results
-2. Distances_between_indivs_MantelCorr.R - Used for the summary table of distances between individuals and the Mantel test
-3. CompareTwoMethodsScot.R - Compares the outputs of the two different methods of geolocator analysis for the Scottish tagged birds
+1. `PlottingMigrationMaps.R` - Carries out the kernel density analyses for each of the populations, and plots the results
+2. `Distances_between_indivs_MantelCorr.R` - Used for the summary table of distances between individuals and the Mantel test
+3. `CompareTwoMethodsScot.R` - Compares the outputs of the two different methods of geolocator analysis for the Scottish tagged birds
 
 ## Wind analysis
 
-Contains several scripts required to run the wind analysis portion of the analyses. These must be run in the following order:
+Contains several scripts required to run the wind analysis portion of the analyses. All scripts are coded to run on a PC except for the `submit_simulated_bird_costs_function.R` and `simulated_bird_costs_function.R` which are designed to run on a computer cluster to save time. The scripts must be run in the following order:
 
-1. 
+1. `calculate_wind_costs.R` - Main script which: downloads wind data across all altitudes, simulates random migratory tracks, simulates geolocator error tracks, and then calculates costs of simulated migrations, real bird migrations and costs accounting for geolocation error.
+2. `combine_real_simulated_costs.R` - Combines all the files created in `calculate_wind_costs.R`
+3. `wind_analyses_models.R` - Runs all models and outputs tables
+4. `wind_analyses_plots.R` - Runs all the plots 
