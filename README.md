@@ -20,4 +20,6 @@ Contains several scripts required to run the wind analysis portion of the analys
 1. `calculate_wind_costs.R` - Main script that: downloads wind data across all altitudes, simulates random migratory tracks, simulates geolocator error tracks, and then calculates costs of simulated migrations, real bird migrations and costs accounting for geolocation error.
 2. `combine_real_simulated_costs.R` - Combines all the files created in `calculate_wind_costs.R`
 3. `wind_analyses_models.R` - Runs all models and outputs tables
-4. `wind_analyses_plots.R` - Runs all the plots 
+4. `wind_analyses_plots.R` - Runs all the plots
+
+`check_wind_conditions.R` - Plots the direction and speed of wind at each altitude during migration window of each individual tracked with a geolocator. 
