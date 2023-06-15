@@ -22,4 +22,4 @@ Contains several scripts required to run the wind analysis portion of the analys
 3. `wind_analyses_models.R` - Runs all models and outputs tables
 4. `wind_analyses_plots.R` - Runs all the plots
 
-`check_wind_conditions.R` - Plots the direction and speed of wind at each altitude during migration window of each individual tracked with a geolocator. 
+There is also the script `check_wind_conditions.R`, which does not need to be run in order (except for after the download). This plots the direction and speed of wind at each altitude during migration window of each individual tracked with a geolocator. 
